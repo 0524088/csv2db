@@ -2,6 +2,8 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\UsersController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -17,3 +19,14 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::get('test', function() {
+    return json_encode([
+        'id' => 1,
+        'value' => 1,
+    ]);
+});
+
+Route::get('register', [UsersController::class, 'register']);
+Route::post('login', [UsersController::class, 'login']);
+Route::get('logout', [UsersController::class, 'logout']);

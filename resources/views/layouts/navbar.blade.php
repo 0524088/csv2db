@@ -13,7 +13,7 @@
                     <a class="nav-link text-light ms-3" href="chart">圖表</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link text-light ms-3" href="login">登入</a>
+                    <a class="nav-link text-light ms-3" href="logout">登出</a>
                 </li>
             </ul>
         </div>
