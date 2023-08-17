@@ -11,14 +11,21 @@
             overflow: auto;
             display:inline-block;
         }
-        table td th{
+        td, th{
             text-align: center;
         }
-        table tbody tr:hover td {
+        tr:hover td {
             background-color: #6c757d;
         }
-        table th {
+        th {
             min-width: 120px;
+        }
+        .th-click:hover{
+            background-color: #6c757d;
+            cursor: pointer;
+        }
+        .th-ignore{
+            background-color: #7e0b1b !important;
         }
     </style>
     <input type="file" id="csvFile" accept=".csv" class="btn btn-sm btn-outline-secondary"/>
@@ -30,6 +37,7 @@
     <script>
         let Data;
         let Pages = 1;
+
 
         // csv轉陣列
         function csvToArray(result) {
@@ -52,12 +60,15 @@
             var array = csvToArray(result); //this is where the csv array will be
             let html = {};
             let html_body_count = -1;
+            let null_row_flag = false; // 判斷每個row是否有null值
 
             let record_per_pages = 25, // 每頁n筆
                 now_page = 1, // 第n頁
                 first_line_is_column_name = true; // 首欄為欄位名
                 ignore_first_line = 0; // 忽略第前面n行
                 ignore_last_line = 0; // 忽略後面n行
+                row_column_type_line = 1; // 欄位型別判斷
+                ignore_column = []; // 不存入的欄位
 
             if(typeof option !== 'undefined') {
                 typeof option.record_per_pages !== 'undefined' ? record_per_pages : option.record_per_pages;
@@ -65,6 +76,8 @@
                 typeof option.first_line_is_column_name ? 'undefined' : option.first_line_is_column_name;
                 typeof option.ignore_first_line !== 'undefined' ? ignore_first_line : option.ignore_first_line;
                 typeof option.ignore_last_line !== 'undefined' ? ignore_last_line : option.ignore_last_line;
+                typeof option.row_column_type_line !== 'undefined' ? row_column_type_line : option.row_column_type_line;
+                typeof option.ignore_column !== 'undefined' ? ignore_column : option.ignore_column;
             }
             // 刪除忽略行數
             if(ignore_first_line > 0) array = array.splice(0, ignore_first_line);
@@ -78,11 +91,12 @@
                     html.body = [];
                     row.forEach(function(cell, i) {
                         if(i == 0) html.head += `<th></th>`;
-                        html.head += `<th>${cell}</th>`;
+                        html.head += `<th class="th-click" data-col="${i}">${cell}</th>`;
                     });
                     html.head = `<thead><tr>${html.head}</tr></thead>`;
                 }
                 else {
+                    null_row_flag = false;
                     // 分組
                     if( (index - 1) % record_per_pages == 0 ) {
                         html_body_count++;
@@ -91,15 +105,19 @@
                     html.body[html_body_count] += '<tr>';
                     row.forEach(function(cell, i) {
                         if(i == 0) html.body[html_body_count] += `<td>${index}</td>`;
-                        html.body[html_body_count] += `<td>${cell}</td>`;
+                        html.body[html_body_count] += `<td class="th-click" data-col="${i}">${cell}</td>`;
+                        if(cell === '') null_row_flag = true;
                     });
                     html.body[html_body_count] += '</tr>';
+
+                    if( null_row_flag === true )  row_column_type_line++;
                 }
-
             });
-
+            
             let h = html.head;
             h += `<tbody>${html.body[now_page - 1]}</tbody>`;
+            html.example = array[row_column_type_line];
+
             document.getElementById("dataTable").innerHTML = h;
             return html;
         }
@@ -111,8 +129,28 @@
 
             reader.onload = function(e) {
                 Data = arrayToTable(e.target.result, "data");
-                console.log(Data);
+                // 點擊切換直排顏色
+                let elements = document.querySelectorAll('.th-click');
+                elements.forEach(function(element) {
+                    element.addEventListener('click', function(e) {
+                        let className = this.className;
+                        let i = this.dataset.col;
+                        let child = document.querySelectorAll(`[data-col='${i}']`);
+                        if(className == 'th-click') {
+                            console.log(child);
+                            child.forEach(function(c) {
+                                c.classList.add("th-ignore");
+                            });
+                        }
+                        if(className == 'th-click th-ignore') {
+                            child.forEach(function(c) {
+                                c.classList.remove("th-ignore");
+                            });
+                        }
 
+                    });
+                });
+                console.log(Data);
             };
             reader.readAsText(f);
         }
