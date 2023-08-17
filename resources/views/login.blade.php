@@ -57,6 +57,7 @@
             let headers = {
                 "Content-Type": "application/json",
                 "Accept": "application/json",
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             }
             let body = {
                 'account' : ac,
@@ -72,7 +73,7 @@
             .then((data) => {
                 if(data.status === 'error') document.getElementById('msg-alert').innerHTML = data.message;
                 else {
-                    console.log('success');
+                    console.log(data.message);
                     window.location.href = "index";
                 }
             })

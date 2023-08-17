@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\ViewController;
 
 /*
 |--------------------------------------------------------------------------
@@ -12,15 +14,15 @@ use Illuminate\Support\Facades\Route;
 | contains the "web" middleware group. Now create something great!
 |
 */
-
-Route::get('/', function () {
-    return view('login');
+Route::middleware(['login.check'])->group(function () {
+    Route::get('/', [ViewController::class, 'index']);
+    Route::get('index', [ViewController::class, 'index']);
+    Route::get('upload', [ViewController::class, 'upload']);
+    Route::get('chart', [ViewController::class, 'chart']);
 });
+Route::get('login', [ViewController::class, 'login']);
 
-Route::get('index', function () {
-    return view('index');
-});
 
-Route::get('login', function () {
-    return view('logout');
-});
+Route::post('login', [UserController::class, 'login']);
+Route::post('register', [UserController::class, 'register']);
+Route::get('logout', [UserController::class, 'logout']);

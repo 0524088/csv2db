@@ -2,7 +2,6 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\UsersController;
 
 
 /*
@@ -26,7 +25,3 @@ Route::get('test', function() {
         'value' => 1,
     ]);
 });
-
-Route::get('register', [UsersController::class, 'register']);
-Route::post('login', [UsersController::class, 'login']);
-Route::get('logout', [UsersController::class, 'logout']);
