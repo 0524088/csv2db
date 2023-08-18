@@ -1,0 +1,50 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Swagger Test",
+        "version": "0.1"
+    },
+    "paths": {
+        "/api/test": {
+            "get": {
+                "tags": [
+                    "API"
+                ],
+                "summary": "測試",
+                "operationId": "test",
+                "responses": {
+                    "200": {
+                        "description": "取得資料"
+                    }
+                },
+                "deprecated": false
+            }
+        },
+        "/logout": {
+            "get": {
+                "tags": [
+                    "API"
+                ],
+                "summary": "登出",
+                "operationId": "logout",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "query",
+                        "description": "請輸入token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "http 200"
+                    }
+                },
+                "deprecated": false
+            }
+        }
+    }
+}

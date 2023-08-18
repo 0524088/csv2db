@@ -45,7 +45,7 @@ class UserController extends Controller
         }
         catch(\Exception $e) {
             $error = $e->getMessage();
-            return response(['status' => 'error', 'message' => $error], 400);
+            return response(['status' => 'error', 'message' => $error], 200);
         }
     }
 

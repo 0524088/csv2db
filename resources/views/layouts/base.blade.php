@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh">
     <head>
-
         @include('layouts.header')
     </head>
     <body class="gradient-custom">
