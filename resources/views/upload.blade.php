@@ -25,7 +25,7 @@
             cursor: pointer;
         }
         th.th-ignore {
-            background-color: #7e0b1b !important;
+            background-color: #7e0b1b ;
         }
         .th-ignore {
             min-width: 1px;
@@ -33,7 +33,7 @@
             overflow: hidden;
             font-size: 0;
         }
-    </style>    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    </style>
 
     <input type="file" id="csvFile" accept=".csv" class="btn btn-sm btn-outline-dark"/>
     <button type="button" class="btn btn-sm btn-outline-danger" onclick="createTable();">Import</button>
@@ -101,6 +101,7 @@
                     data.original.head = row;
                     data.original.body = [];
                     data.original.data = [];
+                    data.original.group_count = record_per_page;
                     data.export = {};
                     data.export.ignore_column = [];
                     row.forEach(function(col, i) {
@@ -139,6 +140,7 @@
             let html_body = '';
             let head = data.original.head;
             let body = data.original.body[page - 1];
+            let group = data.original.group_count;
 
             head.forEach(function(col, i) {
                 if(i == 0) html_head += `<th></th>`;
@@ -149,7 +151,7 @@
             body.forEach(function(row, index) {
                 html_body += '<tr>';
                 row.forEach(function(col, i) {
-                    if(i == 0) html_body += `<td>${body.length * (page - 1) + index + 1}</td>`;
+                    if(i == 0) html_body += `<td>${group * (page - 1) + index + 1}</td>`;
                     if( data.export.ignore_column[i] == 1 ) html_body += `<td data-col="${i}">${col}</td>`;
                     if( data.export.ignore_column[i] == 0 ) html_body += `<td data-col="${i}" class="th-ignore">${col}</td>`;
                 });
@@ -236,24 +238,25 @@
             });
 
             let headers = {
-                "Content-Type": "application/json",
+                //"Content-Type": "multipart/form-data",
                 "Accept": "application/json",
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             }
-            let body = {
-                'table' : document.getElementById("csvFile").files[0].name.replace('.csv', ''),
+            let data_info = {
+                'table' : csvFile.files[0].name.replace('.csv', ''),
                 'column' : column_name,
                 'type' : column_type,
-                'data' : d,
             }
-            console.log(body);
+            // 發送json & file
+            let formData = new FormData();
+            formData.append('file', csvFile.files[0]);
+            formData.append('data_info', JSON.stringify(data_info));
 
             let url = `${server_url}/upload`;
-
             fetch(url, {
                 method: 'post',
                 headers: headers,
-                body: JSON.stringify(body)
+                body: formData
             })
             .then(response => response.json())
             .then((data) => {
@@ -266,7 +269,7 @@
         // 上下一頁
         function turnPage(page) {
             if( Object.keys(Data).length === 0 ) return;
-            if( (Page + page) > 0 && (Page + page) < Data.original.body.length ) Page += page;
+            if( (Page + page) > 0 && (Page + page) <= Data.original.body.length ) Page += page;
             pageAction(Page);
         }
         // 指定頁數
@@ -276,7 +279,7 @@
                 return;
             }
             page = Number(page);
-            if( page > 0 && page < Data.original.body.length ) Page = page;
+            if( page > 0 && page <= Data.original.body.length ) Page = page;
             if( page < 0 ) Page = 1;
             if( page > Data.original.body.length ) Page = Data.original.body.length;
             document.getElementById('input-page').value = Page;

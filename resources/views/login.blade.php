@@ -33,9 +33,7 @@
     </div>
     <script>
         let btn = document.getElementById('btn-login');
-        
         let url = `${server_url}/login`;
-
 
         function login() {
             document.getElementById('msg-alert').innerHTML = '';
@@ -53,7 +51,8 @@
                 'account' : ac,
                 'password' : pw
             }
-
+            
+            // fetch version
             fetch(url, {
                 method: 'post',
                 headers: headers,
@@ -70,6 +69,25 @@
             .catch((error) => {
                 alert(error);
             });
+
+            /*// xmlhttprequest version
+            let xhr = new XMLHttpRequest();
+            xhr.open('post', url, true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.setRequestHeader("Accept", "application/json");
+            xhr.setRequestHeader("X-CSRF-TOKEN", document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+
+            xhr.send(JSON.stringify(body));
+            
+            xhr.onload = function() {
+                let data = JSON.parse(this.responseText);
+
+                if(data.status === 'error') document.getElementById('msg-alert').innerHTML = data.message;
+                else {
+                    console.log(data.message);
+                    window.location.href = "index";
+                }
+            };*/
         }
     </script>
 @endsection

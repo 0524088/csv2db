@@ -91,6 +91,18 @@ return [
             'prefix_indexes' => true,
         ],
 
+        'mongodb' => [
+            'driver' => 'mongodb',
+            'host' => env('DB_HOST_NOSQL', '127.0.0.1'),
+        'port' => env('DB_PORT_NOSQL', 27017),
+        'database' => env('DB_DATABASE_NOSQL', 'mydb'),
+        'username' => env('DB_USERNAME_NOSQL', ''),
+        'password' => env('DB_PASSWORD_NOSQL', ''),
+        'options' => [
+                'database' => env('DB_AUTHENTICATION_DATABASE', 'admin'),
+        ],
+      ],
+
     ],
 
     /*

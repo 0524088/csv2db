@@ -28,4 +28,5 @@ Route::post('login', [UserController::class, 'login']);
 Route::post('register', [UserController::class, 'register']);
 Route::get('logout', [UserController::class, 'logout']);
 
-Route::post('upload', [FunctionController::class, 'upload']);
+Route::post('upload', [FunctionController::class, 'upload']); // 上傳文件
+Route::get('upload_process_bar', [FunctionController::class, 'upload_process_bar']); // 進度條
