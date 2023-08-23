@@ -215,8 +215,8 @@
             let column_type = [];
             let column_name = [];
             example.forEach(function(row, index) {
-                if(ignore[index] == 0) return;
-                let type = 'varchar(max)';
+                let type = 'text';
+                if(ignore[index] == 0) type = '';
                 if(Number(row) != NaN) {
                     row = Number(row);
                     if( Number(row) === row && row % 1 === 0 ) type = 'int';
@@ -246,13 +246,14 @@
                 'table' : csvFile.files[0].name.replace('.csv', ''),
                 'column' : column_name,
                 'type' : column_type,
+                'ignore' : data.export.ignore_column
             }
             // 發送json & file
             let formData = new FormData();
             formData.append('file', csvFile.files[0]);
             formData.append('data_info', JSON.stringify(data_info));
 
-            let url = `${server_url}/upload`;
+            let url = 'upload';
             fetch(url, {
                 method: 'post',
                 headers: headers,

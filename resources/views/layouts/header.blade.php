@@ -22,7 +22,3 @@
         background: linear-gradient(to right, rgba(106, 17, 203, 1), rgba(37, 117, 252, 1))
         }
     </style>
-
-    <script>
-        let server_url = 'http://127.0.0.1/side_project/public';
-    </script>

@@ -33,8 +33,6 @@
     </div>
     <script>
         let btn = document.getElementById('btn-login');
-        let url = `${server_url}/login`;
-
         function login() {
             document.getElementById('msg-alert').innerHTML = '';
             let ac = document.getElementById('input-account').value ;
@@ -53,7 +51,7 @@
             }
             
             // fetch version
-            fetch(url, {
+            fetch('login', {
                 method: 'post',
                 headers: headers,
                 body: JSON.stringify(body)
