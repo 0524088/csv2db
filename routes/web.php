@@ -29,4 +29,4 @@ Route::post('register', [UserController::class, 'register']);
 Route::get('logout', [UserController::class, 'logout']);
 
 Route::post('upload', [FunctionController::class, 'upload']); // 上傳文件
-Route::get('upload_process_bar', [FunctionController::class, 'upload_process_bar']); // 進度條
+Route::post('upload_finished', [FunctionController::class, 'upload_finished']); // 分割上傳完成後處理

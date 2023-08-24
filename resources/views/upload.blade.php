@@ -35,18 +35,62 @@
         }
     </style>
 
-    <input type="file" id="csvFile" accept=".csv" class="btn btn-sm btn-outline-dark"/>
-    <button type="button" class="btn btn-sm btn-outline-danger" onclick="createTable();">Import</button>
-    <button type="button" class="btn btn-sm btn-outline-warning" onclick="exportTable();">Export</button>
+    <input type="file" id="csvFile" accept=".csv" onchange="fileChange();" class="btn btn-sm btn-outline-dark"/>
+    <button id="btn-import" type="button" class="btn btn-sm btn-outline-danger" onclick="createTable();" disabled>Import</button>
+    <button id="btn-export" type="button" class="btn btn-sm btn-outline-warning btn-lg" onclick="exportTable();" disabled>Export</button>
     <button type="button" class="btn btn-sm btn-outline-dark" onclick="turnPage(-1);">Previous</button>
     <input type="text" id="input-page" class="btn btn-sm col-1" style="color: #212529; border-color: #212529; cursor: text" onchange="specifiedPage(this.value)" placeholder="Page"/>
     <button type="button" class="btn btn-sm btn-outline-dark" onclick="turnPage(1);">Next</button>
+    <div class="progress">
+        <div id="progress_bar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%; color: black">0 %</div>
+    </div>
     <table id="dataTable" class="table table table-dark table-bordered "></table>
     <script>
         var Data = {};
         var Page = 1;
         var File = '';
 
+        // ====================================================================================================================================
+        // file button
+        // 切換檔案
+        function fileChange() {
+            progree = document.getElementById('progress_bar');
+            progree.innerHTML = `0 %`;
+            progree.style.width = `0%`;
+
+            let csvFile = document.getElementById("csvFile");
+            if( csvFile.files.length === 0 || File === csvFile.files[0].name ) {
+                document.getElementById('btn-import').disabled = true;
+                document.getElementById('btn-export').disabled = true;
+            }
+            else {
+                document.getElementById('btn-import').disabled = false;
+                document.getElementById('btn-export').disabled = true;
+                document.getElementById('dataTable').innerHTML = '';
+            }
+        }
+        
+        // ====================================================================================================================================
+        // Import Button
+        // 建立view表格
+        function createTable() {
+            document.getElementById('btn-import').disabled = true;
+            document.getElementById('btn-export').disabled = false;
+
+            let csvFile = document.getElementById("csvFile");
+            if( csvFile.files.length === 0 || File === csvFile.files[0].name ) return;
+            else File = csvFile.files[0].name;
+
+            let reader = new FileReader();
+            let f = csvFile.files[0];
+            reader.onload = function(e) {
+                Data = arrayToTable(e.target.result, "data");
+                console.log(Data);
+                renderTable(1);
+            };
+            reader.readAsText(f);
+        }
+        
         // csv轉陣列
         function csvToArray(result) {
             let resultArray = [];
@@ -186,24 +230,14 @@
                 });
             });
         }
-        // 建立view表格
-        function createTable() {
-            let csvFile = document.getElementById("csvFile");
-            if( csvFile.files.length === 0 || File === csvFile.files[0].name ) return;
-            else File = csvFile.files[0].name;
 
-            let reader = new FileReader();
-            let f = csvFile.files[0];
-            reader.onload = function(e) {
-                Data = arrayToTable(e.target.result, "data");
-                console.log(Data);
-                renderTable(1);
-            };
-            reader.readAsText(f);
-        }
-        
+
+        // ====================================================================================================================================
+        // Export Button
         // 輸出
         function exportTable() {
+            document.getElementById('btn-export').disabled = true;
+
             let csvFile = document.getElementById("csvFile");
             if( Object.keys(Data).length === 0 ) return;
             let data = Data;
@@ -242,31 +276,76 @@
                 "Accept": "application/json",
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             }
-            let data_info = {
-                'table' : csvFile.files[0].name.replace('.csv', ''),
-                'column' : column_name,
-                'type' : column_type,
-                'ignore' : data.export.ignore_column
-            }
-            // 發送json & file
-            let formData = new FormData();
-            formData.append('file', csvFile.files[0]);
-            formData.append('data_info', JSON.stringify(data_info));
 
-            let url = 'upload';
-            fetch(url, {
-                method: 'post',
-                headers: headers,
-                body: formData
-            })
-            .then(response => response.json())
-            .then((data) => {
-                console.log(data.message);
-            })
-            .catch(error => console.error(error));
+            // 分割檔案以上傳
+            let file = csvFile.files[0];
+            let file_name = file.name.replace('.csv', '');
+            let chunkSize = 6000000; // 字節，約5MB
+            let count = 0;
+            let num = 0;
+            let progress = 0; // 進度條
+            let total = (file.size / chunkSize).toFixed(0); // 總分割塊數
+            if( file.size % chunkSize !== 0 ) total++; // 最後一塊未滿
+            for (let start = 0; start <= file.size; start += chunkSize) {
+                let chunk = file.slice(start, start + chunkSize + 1);
+                let formData = new FormData();
+
+                // 發送json & file
+                formData.append('name', file_name); // 檔名
+                formData.append('file', chunk); // 檔案塊
+                formData.append('num', num); // 第N個分割檔
+
+                fetch('upload', {
+                    method: 'post',
+                    headers: headers,
+                    body: formData
+                })
+                .then(response => response.json())
+                .then((data) => {
+                    console.log(data);
+                    if( data.status === 'success' ) count++; // 下載完成的分割檔計數器
+
+                    // 進度條
+                    progress = (count / total).toFixed(0) * 100;
+                    let element = document.getElementById('progress_bar');
+                    element.innerHTML = `${progress} %`;
+                    element.style.width = `${progress}%`;
+
+                    // 所有分割檔下載完成call後端處理
+                    if( count === total ) {
+
+                        let headers = {
+                            "Content-Type": "application/json",
+                            "Accept": "application/json",
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        };
+                        let body = {
+                            'name' : file_name, // table name
+                            'column' : column_name, // columns name
+                            'type' : column_type, // colums type
+                            'ignore' : ignore, // ignore columns
+                            'count' : count // 檔案分割數
+                        };
+
+                        fetch(`upload_finished`, {
+                            method: 'post',
+                            headers: headers,
+                            body: JSON.stringify(body)
+                        })
+                        .then(response => response.json())
+                        .then((data) => {
+                            console.log(data);
+                        })
+                        .catch(error => console.error(error));
+                    }
+                })
+                .catch(error => console.error(error));
+                num++;
+            }
 
         }
-
+        // ====================================================================================================================================
+        // Page Controller
         // 上下一頁
         function turnPage(page) {
             if( Object.keys(Data).length === 0 ) return;
