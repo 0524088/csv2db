@@ -16,6 +16,11 @@ class ViewController extends Controller
         else return view('login');
     }
 
+    function logout() {
+        Session::forget('token');
+        return redirect('index');
+    }
+
     function upload() {
         return view('upload');
     }

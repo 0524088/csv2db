@@ -64,5 +64,6 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
 
         'login.check' => \App\Http\Middleware\CheckLoginStatus::class,
+        'ajax.login.check' => \App\Http\Middleware\AjaxCheckLoginStatus::class,
     ];
 }

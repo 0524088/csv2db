@@ -84,7 +84,7 @@ class UserController extends Controller
         }
     }
 
-    public function logout(Request $request) {
+    public function logout() {
         try{
             // 尚未登入
             if(!Session::has('token')) {

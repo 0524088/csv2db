@@ -7,7 +7,7 @@
             margin-bottom: 1vh;
         }
         table {
-            max-height: 83vh;
+            max-height: 78vh;
             overflow: auto;
             display:inline-block;
         }
@@ -44,6 +44,7 @@
     <div class="progress">
         <div id="progress_bar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%; color: black">0 %</div>
     </div>
+    <br>
     <table id="dataTable" class="table table table-dark table-bordered "></table>
     <script>
         var Data = {};
@@ -60,7 +61,7 @@
 
             let csvFile = document.getElementById("csvFile");
             if( csvFile.files.length === 0 || File === csvFile.files[0].name ) {
-                document.getElementById('btn-import').disabled = true;
+                document.getElementById('btn-import').disabled = false;
                 document.getElementById('btn-export').disabled = true;
             }
             else {
@@ -236,7 +237,7 @@
         // Export Button
         // 輸出
         function exportTable() {
-            document.getElementById('btn-export').disabled = true;
+            //document.getElementById('btn-export').disabled = true;
 
             let csvFile = document.getElementById("csvFile");
             if( Object.keys(Data).length === 0 ) return;
@@ -305,11 +306,14 @@
                     console.log(data);
                     if( data.status === 'success' ) count++; // 下載完成的分割檔計數器
 
+
                     // 進度條
                     progress = (count / total).toFixed(0) * 100;
                     let element = document.getElementById('progress_bar');
                     element.innerHTML = `${progress} %`;
                     element.style.width = `${progress}%`;
+                    element.classList.add('bg-warning');
+                    element.classList.remove('bg-success');
 
                     // 所有分割檔下載完成call後端處理
                     if( count === total ) {
@@ -335,6 +339,10 @@
                         .then(response => response.json())
                         .then((data) => {
                             console.log(data);
+                            if( progress == 100 ) {
+                                element.classList.remove('bg-warning');
+                                element.classList.add('bg-success');
+                            }
                         })
                         .catch(error => console.error(error));
                     }

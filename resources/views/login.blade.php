@@ -33,6 +33,13 @@
     </div>
     <script>
         let btn = document.getElementById('btn-login');
+
+        document.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                login();
+            }
+        });
+
         function login() {
             document.getElementById('msg-alert').innerHTML = '';
             let ac = document.getElementById('input-account').value ;

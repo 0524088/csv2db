@@ -11,15 +11,15 @@ use Session;
 
 class FunctionController extends Controller
 {
+    // 上傳檔案(分割檔)
     function upload(Request $request) {
-        DB::beginTransaction();
         try {
             $file = $request->file('file');
             $file_name = $request->input('name');
             $num = $request->input('num');
             $file_collection_name = Session::get('token');
 
-            Storage::disk('test_file')->putFileAs('', $file, "$file_collection_name/$file_name".'_'.$num);
+            Storage::disk('test_file')->putFileAs('', $file, "$file_collection_name/$file_name".'_'.$num); // 存放檔案
 
             return response([
                 'status' => 'success',
@@ -27,8 +27,63 @@ class FunctionController extends Controller
                 'original_file_name' => $file_name,
                 'chunk_file_name' => $file_name.'_'.$num,
             ], 200);
+        }
+        catch(\Exception $e) {
+            $error = $e->getMessage();
+            return response(['status' => 'error', 'message' => $error], 200);
+        }
+    }
 
+    // 合併分割檔
+    function upload_finished(Request $request) {
+        try {
+            $count = $request->input('count');
+            $file_collection_name = Session::get('token');
+            $total = count(Storage::disk('test_file')->files($file_collection_name)); // 總檔案數
 
+            $file_name = $request->input('name');
+            $column = $request->input('column');
+            $type = $request->input('type');
+            $ignore = $request->input('ignore');
+
+            if( $count == $total ) {
+                $write_flag = false;
+                // 依序讀入分割檔
+                for( $i = 0; $i < $total; $i++ ) {
+                    $write_flag = true;
+                    // 讀檔
+                    $file_r = Storage::disk('test_file')->path("$file_collection_name/$file_name".'_'.$i);
+                    $buff = file_get_contents($file_r);
+
+                    // 刪除
+                    Storage::disk('test_file')->delete("$file_collection_name/$file_name".'_'.$i);
+
+                    // 寫進檔案
+                    $file_w = Storage::disk('test_file')->path("$file_collection_name").'/'.$file_name.'.csv';
+                    file_put_contents($file_w, $buff, FILE_APPEND);
+                }
+                // 無分割檔
+                if(!$write_flag) {
+                    // 改檔名
+                    $file_w = Storage::disk('test_file')->path("$file_collection_name").'/'.$file_name.'.csv';
+                    file_put_contents($file_w);
+                }
+
+            }
+
+            if( $count == $total ) return response(['status' => 'success', 'message' => 'uploaded success'], 200); // 分割數量相同
+            if( $count < $total ) return response(['status' => 'error', 'message' => 'lose files!', 'quantity' => ($count - $total)], 400); // 少分割數量(有上傳失敗)
+            if( $count > $total ) return response(['status' => 'error', 'message' => 'extra files!', 'quantity' => ($count - $total)], 400); // 多分割數量(其他錯誤，多出檔案)
+        }
+        catch(\Exceoption $e) {
+            $error = $e->getMessage();
+            return response(['status' => 'error', 'message' => $error], 400);
+        }
+    }
+
+    function test() {
+        DB::beginTransaction();
+        try {
             $file_handle = fopen($file, 'r');
             $columns = '';
             $row_count = 0;
@@ -87,52 +142,10 @@ class FunctionController extends Controller
 
             return response(['status' => 'success', 'message' => "$table is created success!"], 200);
         }
-        catch(\Exception $e) {
+        catch(\Exceoption $e) {
             DB::rollback();
             $error = $e->getMessage();
-            return response(['status' => 'error', 'message' => $error], 200);
+            return response(['status' => 'error', 'message' => $error], 400);
         }
     }
-
-    // 分割上傳完整後處理
-    function upload_finished(Request $request) {
-        try {
-            $count = $request->input('count');
-            $file_collection_name = Session::get('token');
-            $total = count(Storage::disk('test_file')->files($file_collection_name));
-
-            if( $count == $total ) return response(['status' => 'success', 'message' => 'uploaded success'], 200); // 分割數量相同
-            if( $count < $total ) return response(['status' => 'error', 'message' => 'lose files!', 'quantity' => ($count - $total)], 400); // 少分割數量(有上傳失敗)
-            if( $count > $total ) return response(['status' => 'error', 'message' => 'extra files!', 'quantity' => ($count - $total)], 400); // 多分割數量(其他錯誤，多出檔案)
-            
-            $column = $request->input('column');
-            $type = $request->input('type');
-            $ignore = $request->input('ignore');
-
-            if( $total == $total_uploaded ) {
-                for( $i = 1; $i < $total; $i++ ) {
-                    $path = Storage::disk('test_file')->path("$file_collection_name/$file_name".'_0');
-                    $file = fopen($path, 'rb');
-                    $buff = fread($file, filesize($path));
-                    fclose($file);
-    
-                    $path1 = Storage::disk('test_file')->path("$file_collection_name/$file_name".'_'.$i);
-                    $final = fopen($path1, 'ab');
-                    $write = fwrite($final, $buff);
-                    fclose($final);
-                
-                }
-            }
-        }
-        catch(\Exceoption $e) {
-
-        }
-
-
-
-
-    }
-
-
-
 }
