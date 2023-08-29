@@ -81,7 +81,7 @@ class FunctionController extends Controller
         }
     }
 
-    function test() {
+    function createTable() {
         DB::beginTransaction();
         try {
             $file_handle = fopen($file, 'r');
@@ -147,5 +147,20 @@ class FunctionController extends Controller
             $error = $e->getMessage();
             return response(['status' => 'error', 'message' => $error], 400);
         }
+    }
+
+
+    function insertData() {
+
+        $file = 'C:\\\\Users\\\\nunu\\\\Desktop\\\\NPA_TMA2\\\\test1.csv';
+        $parameters = '';
+
+        DB::statement("LOAD DATA INFILE '$file' INTO TABLE `test`
+        fields terminated BY ','
+        lines terminated by '\\r\\n'
+        ignore 1 lines
+        $parameters");
+
+
     }
 }

@@ -23,11 +23,11 @@ Route::middleware(['login.check'])->group(function () {
     Route::get('logout', [ViewController::class, 'logout']);
 });
 
+Route::get('register', [UserController::class, 'register']);
 Route::get('login', [ViewController::class, 'login']);
 Route::post('login', [UserController::class, 'login']);
 
 Route::middleware(['ajax.login.check'])->group(function () {
-    Route::post('register', [UserController::class, 'register']);
     Route::post('logout', [UserController::class, 'logout']);
 
     Route::post('upload', [FunctionController::class, 'upload']); // 上傳檔案
