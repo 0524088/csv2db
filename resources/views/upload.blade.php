@@ -405,6 +405,8 @@
         // 輸出
         function exportTable() {
             //document.getElementById('btn-export').disabled = true;
+            let ignore_start_lines = 1;
+            let ignore_end_lines = 2;
 
             let csvFile = document.getElementById("csvFile");
             if( Object.keys(Data).length === 0 ) return;
@@ -488,6 +490,8 @@
                                 'type' : column_type, // colums type
                                 'ignore' : ignore, // ignore columns
                                 'count' : count // 檔案分割數
+                                'ignore_start_lines' : ignore_start_lines, // 省略行初
+                                'ignore_end_lines' : ignore_end_lines, // 省略行尾
                             };
     
                             fetch(`upload_finished`, {

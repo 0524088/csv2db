@@ -17,16 +17,16 @@ class FunctionController extends Controller
             $base64data = $request->input('base64data');
             $file_name = $request->input('name');
             $num = $request->input('num');
+            $file_save_name = $file_name.'_'.$num;
             $file_collection_name = Session::get('token');
 
-            $file_w = Storage::disk('test_file')->path("$file_collection_name/$file_name".'_'.$num);
-            file_put_contents($file_w, $base64data);
+            Storage::disk('test_file')->put("$file_collection_name/$file_save_name", $base64data); // 存放檔案
 
             return response([
                 'status' => 'success',
-                'message' => $file_name.'_'.$num."uploaded success",
+                'message' => $file_save_name." uploaded success",
                 'original_file_name' => $file_name,
-                'chunk_file_name' => $file_name.'_'.$num,
+                'chunk_file_name' => $file_save_name,
             ], 200);
         }
         catch(\Exception $e) {
@@ -40,8 +40,7 @@ class FunctionController extends Controller
         try {
             $count = $request->input('count');
             $file_collection_name = Session::get('token');
-            $total = count(Storage::disk('test_file')->files($file_collection_name)); // 總檔案數
-
+            $total = count(Storage::disk('test_file')->files("$file_collection_name")); // 總檔案數
             $file_name = $request->input('name');
 
             if( $count == $total ) {
@@ -49,12 +48,13 @@ class FunctionController extends Controller
                 // 依序讀入分割檔
                 for( $i = 0; $i < $total; $i++ ) {
                     $write_flag = true;
+                    $file_save_name = $file_name.'_'.$i;
                     // 讀檔
-                    $file_r = Storage::disk('test_file')->path("$file_collection_name/$file_name".'_'.$i);
+                    $file_r = Storage::disk('test_file')->path("$file_collection_name/$file_save_name");
                     $buff = file_get_contents($file_r);
 
                     // 刪除
-                    Storage::disk('test_file')->delete("$file_collection_name/$file_name".'_'.$i);
+                    Storage::disk('test_file')->delete("$file_collection_name/$file_save_name");
 
                     // 寫進檔案 (拼接)
                     $file_w = Storage::disk('test_file')->path("$file_collection_name/$file_name.csv");
@@ -65,6 +65,7 @@ class FunctionController extends Controller
                     // 改檔名
                     $file_w = Storage::disk('test_file')->path("$file_collection_name/$file_name.csv");
                     file_put_contents($file_w);
+
                 }
 
                 // base64轉回
@@ -73,11 +74,41 @@ class FunctionController extends Controller
                 $file_w = Storage::disk('test_file')->path("$file_collection_name/$file_name.csv");
                 file_put_contents($file_w, $buff);
 
+
+                $ignore_start_lines =  $request->input('ignore_start_lines');
+                $ignore_end_lines =  $request->input('ignore_end_lines');
+                // 刪去行尾
+                $lines = file($file_w);
+                for($i = 0; $i < $ignore_end_lines; $i++) {
+                    $last = sizeof($lines) - 1;
+                    unset($lines[$last]);
+                }
+                file_put_contents($file_w, $lines);
+
+                /*
+                $fp = fopen($file_w, 'r+');
+                $cursor = -1;
+                $line = '';
+                $char = fgets($fp);
+                while ($char === "\n" || $char === "\r") {
+                    fseek($fp, $cursor--, SEEK_END);
+                    $char = fgets($fp);
+                }
+                while ($char !== false && $char !== "\n" && $char !== "\r") {
+                    $line = $char.$line;
+                    fseek($fp, $cursor--, SEEK_END);
+                    $char = fgets($fp);
+                }
+                */
+ 
+
                 $table_info = [
                     'name' => $request->input('name'),
                     'columns' => $request->input('column'),
                     'types' => $request->input('type'),
-                    'ignore' => $request->input('ignore')
+                    'ignore' => $request->input('ignore'),
+                    'ignore_start_lines' => $ignore_start_lines,
+                    'ignore_end_lines' => $ignore_end_lines
                 ];
                 // 創建table
                 $create_table_result = $this->createTable($table_info);
@@ -136,10 +167,12 @@ class FunctionController extends Controller
             $table = $table_info['name'];
             $columns = $table_info['columns'];
             $ignore = $table_info['ignore'];
+            $ignore_start_lines = $table_info['ignore_start_lines'];
 
             $file_collection_name = Session::get('token');
             $file = $table.'.csv';
             $path = Storage::disk('test_file')->path("$file_collection_name/$file");
+
             $path = str_replace('\\', '\\\\', $path); // php反斜線為保留字，需用\\代替；MySQL\亦為保留字
             
             // 拼接代入column
@@ -158,7 +191,7 @@ class FunctionController extends Controller
             CHARACTER SET utf8mb4
             fields terminated BY ','
             lines terminated by '\\r\\n'
-            ignore 1 lines
+            ignore $ignore_start_lines lines
             ($sql_parameters)");
 
             Storage::disk('test_file')->delete("$file_collection_name/$file"); // 匯入成功刪除檔案
