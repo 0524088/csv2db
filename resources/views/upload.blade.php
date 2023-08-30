@@ -434,78 +434,83 @@
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             }
 
-            // 分割檔案以上傳
             let file = csvFile.files[0];
             let file_name = file.name.replace('.csv', '');
-            let chunkSize = 6000000; // 字節，約5MB
-            let count = 0;
-            let num = 0;
-            let progress = 0; // 進度條
-            let total = (file.size / chunkSize).toFixed(0); // 總分割塊數
-            if( file.size % chunkSize !== 0 ) total++; // 最後一塊未滿
-            for (let start = 0; start <= file.size; start += chunkSize) {
-                let chunk = file.slice(start, start + chunkSize + 1);
-                let formData = new FormData();
+            // 轉成base64並分割上傳 (轉base64以避免utf8字元編碼被切割問題)
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                let base64data = this.result; // base64
 
-                // 發送json & file
-                formData.append('name', file_name); // 檔名
-                formData.append('file', chunk); // 檔案塊
-                formData.append('num', num); // 第N個分割檔
+                let chunkSize = 5 * 1024 * 1024; // 分割成5MB一組
+                let count = 0; // 發送成功chunk數
+                let num = 0; // 發送第N個chunk數
+                let progress = 0; // 進度條
+                let total = Math.ceil(base64data.length / chunkSize) + 1; // 總分割塊數 (+1為最後檔案處理的部分，給進度條顯示用)
+                for (let start = 0; start <= base64data.length; start += chunkSize) {
+                    let chunk = base64data.slice(start, start + chunkSize);
+                    console.log(chunk);
+                    let formData = new FormData();
+    
+                    // 發送json & file
+                    formData.append('name', file_name); // 檔名
+                    formData.append('base64data', chunk); // chunk
+                    formData.append('num', num); // 第N個chunk
+    
+                    fetch('upload', {
+                        method: 'post',
+                        headers: headers,
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then((data) => {
+                        console.log(data);
+                        if( data.status === 'success' ) count++; // 上傳完成的分割計數器
 
-                fetch('upload', {
-                    method: 'post',
-                    headers: headers,
-                    body: formData
-                })
-                .then(response => response.json())
-                .then((data) => {
-                    console.log(data);
-                    if( data.status === 'success' ) count++; // 下載完成的分割檔計數器
+                        // 進度條
+                        progress = (count / total).toFixed(0) * 100;
+                        let element = document.getElementById('progress_bar');
+                        element.innerHTML = `${progress} %`;
+                        element.style.width = `${progress}%`;
+                        element.classList.add('bg-warning');
+                        element.classList.remove('bg-success');
 
-                    // 進度條
-                    progress = (count / total).toFixed(0) * 100;
-                    let element = document.getElementById('progress_bar');
-                    element.innerHTML = `${progress} %`;
-                    element.style.width = `${progress}%`;
-                    element.classList.add('bg-warning');
-                    element.classList.remove('bg-success');
-
-                    // 所有分割檔下載完成call後端處理
-                    if( count === total ) {
-
-                        let headers = {
-                            "Content-Type": "application/json",
-                            "Accept": "application/json",
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        };
-                        let body = {
-                            'name' : file_name, // table name
-                            'column' : column_name, // columns name
-                            'type' : column_type, // colums type
-                            'ignore' : ignore, // ignore columns
-                            'count' : count // 檔案分割數
-                        };
-
-                        fetch(`upload_finished`, {
-                            method: 'post',
-                            headers: headers,
-                            body: JSON.stringify(body)
-                        })
-                        .then(response => response.json())
-                        .then((data) => {
-                            console.log(data);
-                            if( progress == 100 ) {
-                                element.classList.remove('bg-warning');
-                                element.classList.add('bg-success');
-                            }
-                        })
-                        .catch(error => console.error(error));
-                    }
-                })
-                .catch(error => console.error(error));
-                num++;
-            }
-
+                        // 所有分割檔下載完成call後端處理
+                        if( count == (total - 1) ) {
+    
+                            let headers = {
+                                "Content-Type": "application/json",
+                                "Accept": "application/json",
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            };
+                            let body = {
+                                'name' : file_name, // table name
+                                'column' : column_name, // columns name
+                                'type' : column_type, // colums type
+                                'ignore' : ignore, // ignore columns
+                                'count' : count // 檔案分割數
+                            };
+    
+                            fetch(`upload_finished`, {
+                                method: 'post',
+                                headers: headers,
+                                body: JSON.stringify(body)
+                            })
+                            .then(response => response.json())
+                            .then((data) => {
+                                console.log(data);
+                                if( progress == 100 ) {
+                                    element.classList.remove('bg-warning');
+                                    element.classList.add('bg-success');
+                                }
+                            })
+                            .catch(error => console.error(error));
+                        }
+                    })
+                    .catch(error => console.error(error));
+                    num++;
+                }
+            };
+            reader.readAsDataURL(file); // 以base64讀取
         }
 
 

@@ -11,15 +11,16 @@ use Session;
 
 class FunctionController extends Controller
 {
-    // 上傳檔案(分割檔)
+    // 上傳檔案 (分割檔)
     function upload(Request $request) {
         try {
-            $file = $request->file('file');
+            $base64data = $request->input('base64data');
             $file_name = $request->input('name');
             $num = $request->input('num');
             $file_collection_name = Session::get('token');
 
-            Storage::disk('test_file')->putFileAs('', $file, "$file_collection_name/$file_name".'_'.$num); // 存放檔案
+            $file_w = Storage::disk('test_file')->path("$file_collection_name/$file_name".'_'.$num);
+            file_put_contents($file_w, $base64data);
 
             return response([
                 'status' => 'success',
@@ -55,20 +56,23 @@ class FunctionController extends Controller
                     // 刪除
                     Storage::disk('test_file')->delete("$file_collection_name/$file_name".'_'.$i);
 
-                    // 寫進檔案
-                    $file_w = Storage::disk('test_file')->path("$file_collection_name").'/'.$file_name.'.csv';
+                    // 寫進檔案 (拼接)
+                    $file_w = Storage::disk('test_file')->path("$file_collection_name/$file_name.csv");
                     file_put_contents($file_w, $buff, FILE_APPEND);
                 }
                 // 無分割檔
                 if(!$write_flag) {
                     // 改檔名
-                    $file_w = Storage::disk('test_file')->path("$file_collection_name").'/'.$file_name.'.csv';
+                    $file_w = Storage::disk('test_file')->path("$file_collection_name/$file_name.csv");
                     file_put_contents($file_w);
                 }
 
-            }
-            // 分割數量相同
-            if( $count == $total ) {
+                // base64轉回
+                $file_r = Storage::disk('test_file')->path("$file_collection_name/$file_name.csv");
+                $buff = base64_decode(str_replace('data:text/csv;base64,', '', file_get_contents($file_r)));
+                $file_w = Storage::disk('test_file')->path("$file_collection_name/$file_name.csv");
+                file_put_contents($file_w, $buff);
+
                 $table_info = [
                     'name' => $request->input('name'),
                     'columns' => $request->input('column'),
@@ -85,8 +89,8 @@ class FunctionController extends Controller
                     }
                 }
             }
-            if( $count < $total ) return response(['status' => 'error', 'message' => 'lose files!', 'quantity' => ($count - $total)], 400); // 少分割數量(有上傳失敗)
-            if( $count > $total ) return response(['status' => 'error', 'message' => 'extra files!', 'quantity' => ($count - $total)], 400); // 多分割數量(其他錯誤，多出檔案)
+            if( $count < $total ) return response(['status' => 'error', 'message' => 'lose files!', 'quantity' => ($count - $total)], 400); // 少分割數量 (有上傳失敗)
+            if( $count > $total ) return response(['status' => 'error', 'message' => 'extra files!', 'quantity' => ($count - $total)], 400); // 多分割數量 (其他錯誤，多出檔案)
         }
         catch(\Exceoption $e) {
             $error = $e->getMessage();
@@ -136,8 +140,9 @@ class FunctionController extends Controller
             $file_collection_name = Session::get('token');
             $file = $table.'.csv';
             $path = Storage::disk('test_file')->path("$file_collection_name/$file");
-            $path = str_replace('\\', '\\\\', $path);
+            $path = str_replace('\\', '\\\\', $path); // php反斜線為保留字，需用\\代替；MySQL\亦為保留字
             
+            // 拼接代入column
             $sql_parameters = '';
             foreach($columns as $index => $column) {
                 if($ignore[$index] == 0) {
@@ -148,15 +153,15 @@ class FunctionController extends Controller
             }
             $sql_parameters = substr($sql_parameters, 0, -1); // 刪去逗號
 
+            // 匯入csv
             DB::statement("LOAD DATA INFILE '$path' INTO TABLE `$table`
-            CHARACTER SET latin1
+            CHARACTER SET utf8mb4
             fields terminated BY ','
             lines terminated by '\\r\\n'
             ignore 1 lines
             ($sql_parameters)");
 
-            Storage::disk('test_file')->delete("$file_collection_name/$file");
-
+            Storage::disk('test_file')->delete("$file_collection_name/$file"); // 匯入成功刪除檔案
             return ['status' => 'success', 'message' => "inserted data into $table success!"];
         }
         catch(\Exceoption $e) {
