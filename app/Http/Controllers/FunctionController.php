@@ -42,9 +42,6 @@ class FunctionController extends Controller
             $total = count(Storage::disk('test_file')->files($file_collection_name)); // 總檔案數
 
             $file_name = $request->input('name');
-            $column = $request->input('column');
-            $type = $request->input('type');
-            $ignore = $request->input('ignore');
 
             if( $count == $total ) {
                 $write_flag = false;
@@ -70,8 +67,24 @@ class FunctionController extends Controller
                 }
 
             }
-
-            if( $count == $total ) return response(['status' => 'success', 'message' => 'uploaded success'], 200); // 分割數量相同
+            // 分割數量相同
+            if( $count == $total ) {
+                $table_info = [
+                    'name' => $request->input('name'),
+                    'columns' => $request->input('column'),
+                    'types' => $request->input('type'),
+                    'ignore' => $request->input('ignore')
+                ];
+                // 創建table
+                $create_table_result = $this->createTable($table_info);
+                if($create_table_result['status'] === 'success') {
+                    // 讀取csv並存入table
+                    $insert_table_result = $this->insertData($table_info);
+                    if($insert_table_result['status'] === 'success') {
+                        return response(['status' => 'success', 'message' => 'uploaded success!'], 200);
+                    }
+                }
+            }
             if( $count < $total ) return response(['status' => 'error', 'message' => 'lose files!', 'quantity' => ($count - $total)], 400); // 少分割數量(有上傳失敗)
             if( $count > $total ) return response(['status' => 'error', 'message' => 'extra files!', 'quantity' => ($count - $total)], 400); // 多分割數量(其他錯誤，多出檔案)
         }
@@ -81,86 +94,76 @@ class FunctionController extends Controller
         }
     }
 
-    function createTable() {
-        DB::beginTransaction();
+    function createTable($table_info) {
         try {
-            $file_handle = fopen($file, 'r');
-            $columns = '';
-            $row_count = 0;
-            $ps_col = ''; // 參數式 - 欄
-            $ps_val = []; // 參數式 - 值
-            $ps_total = 0; // 參數式 - 單筆資料長度
+            $table = $table_info['name'];
+            $columns = $table_info['columns'];
+            $types = $table_info['types'];
+            $ignore = $table_info['ignore'];
 
-            while (!feof($file_handle)) {
-                $col_count = -1; // 判斷是否為首行
-                $ps_count = 0;
-                $data = fgetcsv($file_handle); // 讀取新一行
-                if(!$data) continue; // 錯誤不做
-                foreach($data as $index => $value) {
-                    $col_count++;
-                    // 處理表首
-                    if( $row_count === 0 ) {
-                        if( $ignore[$col_count] == 0 ) continue; // 略過此欄
-                        $t = $type[$col_count];
-                        $columns .= "`$value` $t,"; // column_name + datatype
-                        $ps_total++; // total column
-                    }
-                    // 處理資料
-                    else {
-                        if( $ignore[$col_count] == 0 ) continue; // 略過此欄
-                        array_push($ps_val, $value);
-                        $ps_count++;
-                        if( $ps_count === 1 ) $ps_col .= '(';
-                        $ps_col .= '?,';
-                        if( $ps_count % $ps_total === 0 ) {
-                            $ps_col = substr($ps_col, 0, -1); // 刪去逗號
-                            $ps_col .= '),';
-                        }
-                        
-                    }
-                    $col_count++;
-                }
-                try {
-                    // 處理表首
-                    if($row_count === 0) {
-                        $columns = substr($columns, 0, -1); // 刪去逗號
-                        DB::select("CREATE TABLE `$table` ($columns)");
-                    }
-                    $row_count++;
-                }
-                catch(\Exception $e) {
-                    DB::delete("DROP TABLE IF EXISTS `$table`");
-                    $error = $e->getMessage();
-                    return response(['status' => 'error', 'message' => $error], 200);
-                }
+            $sql_columns = '';
+            foreach($columns as $index => $column) {
+                if($ignore[$index] == 0) continue;
+                $type = $types[$index];
+                $sql_columns .= "`$column` $type,";
             }
-            fclose($file_handle);
-            $ps_col = substr($ps_col, 0, -1); // 刪去逗號
+            $sql_columns = substr($sql_columns, 0, -1); // 刪去逗號
 
-            DB::insert("INSERT INTO `$table` VALUES $ps_col", $ps_val);
-            DB::commit();
-
-            return response(['status' => 'success', 'message' => "$table is created success!"], 200);
+            try {
+                // 處理表首
+                DB::statement("CREATE TABLE `$table` ($sql_columns)");
+                return ['status' => 'success', 'message' => "$table is created success!"];
+            }
+            catch(\Exception $e) {
+                DB::statement("DROP TABLE IF EXISTS `$table`");
+                $error = $e->getMessage();
+                return ['status' => 'error', 'message' => $error];
+            }
         }
         catch(\Exceoption $e) {
-            DB::rollback();
             $error = $e->getMessage();
-            return response(['status' => 'error', 'message' => $error], 400);
+            return ['status' => 'error', 'message' => $error];
         }
     }
 
 
-    function insertData() {
+    function insertData($table_info) {
+        try {
+            $table = $table_info['name'];
+            $columns = $table_info['columns'];
+            $ignore = $table_info['ignore'];
 
-        $file = 'C:\\\\Users\\\\nunu\\\\Desktop\\\\NPA_TMA2\\\\test1.csv';
-        $parameters = '';
+            $file_collection_name = Session::get('token');
+            $file = $table.'.csv';
+            $path = Storage::disk('test_file')->path("$file_collection_name/$file");
+            $path = str_replace('\\', '\\\\', $path);
+            
+            $sql_parameters = '';
+            foreach($columns as $index => $column) {
+                if($ignore[$index] == 0) {
+                    $sql_parameters .= "@temp,";
+                } else {
+                    $sql_parameters .= "`$column`,";
+                }
+            }
+            $sql_parameters = substr($sql_parameters, 0, -1); // 刪去逗號
 
-        DB::statement("LOAD DATA INFILE '$file' INTO TABLE `test`
-        fields terminated BY ','
-        lines terminated by '\\r\\n'
-        ignore 1 lines
-        $parameters");
+            DB::statement("LOAD DATA INFILE '$path' INTO TABLE `$table`
+            CHARACTER SET latin1
+            fields terminated BY ','
+            lines terminated by '\\r\\n'
+            ignore 1 lines
+            ($sql_parameters)");
 
+            Storage::disk('test_file')->delete("$file_collection_name/$file");
 
+            return ['status' => 'success', 'message' => "inserted data into $table success!"];
+        }
+        catch(\Exceoption $e) {
+            DB::statement("DROP TABLE IF EXISTS `$table`");
+            Storage::disk('test_file')->delete("$file_collection_name/$file");
+            $error = $e->getMessage();
+            return ['status' => 'error', 'message' => $error];
+        }
     }
 }

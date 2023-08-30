@@ -416,7 +416,6 @@
             let column_name = data.export.name;
 
             console.log(Data);
-            return;
 
             // data
             let d = [];
@@ -462,7 +461,6 @@
                 .then((data) => {
                     console.log(data);
                     if( data.status === 'success' ) count++; // 下載完成的分割檔計數器
-
 
                     // 進度條
                     progress = (count / total).toFixed(0) * 100;
