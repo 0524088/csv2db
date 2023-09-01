@@ -33,7 +33,9 @@
             overflow: hidden;
             font-size: 0;
         }
-
+        #dataTable .row-ignore {
+            background-color: #000000 ;
+        }
         .question-icon {
             cursor: pointer;
         }
@@ -66,10 +68,11 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body tab-content">
+                <h3 style="margin: 10px">檢視設定</h3>
                 <div class="row">
                     <div class="col-12">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="" id="recordPerPage" checked>
+                            <input class="form-check-input" type="checkbox" value="" style="visibility: hidden">
                             <label class="form-check-label" for="recordPerPage">
                                 每頁
                                 <select class="" id="setting_table_record_per_page">
@@ -82,6 +85,8 @@
                         </div>
                     </div>
                 </div>
+                <hr>
+                <h3 style="margin: 10px">上傳設定</h3>
                 <div class="row">
                     <div class="col-12">
                         <div class="form-check">
@@ -100,16 +105,26 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="" id="ignoreFirstLine">
-                            <label class="form-check-label" for="ignoreFirstLine">
-                                省略第一行
+                            <input class="form-check-input" type="checkbox" value="" id="ignore_start_lines_check">
+                            <label class="form-check-label">
+                                省略前&nbsp;<input type="number" value="0" name="ignore_start_lines" id="ignore_start_lines" style="width:20%" onchange="setIgnoreLinesChecked('start');">&nbsp;行
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="" id="ignore_end_lines_check">
+                            <label class="form-check-label">
+                                省略後&nbsp;<input type="number" value="0" name="ignore_end_lines" id="ignore_end_lines" style="width:20%" onchange="setIgnoreLinesChecked('end');">&nbsp;行
                             </label>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal">OK</button>
+                <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal" onClick="changeTableSetting();">OK</button>
             </div>
         </div>
     </div>
@@ -128,7 +143,7 @@
                         <thead>
                             <tr>
                                 <th scope="col">Using</th>
-                                <th scope="col">#</th>
+                                <th scope="col">@Name</th>
                                 <th scope="col">Column Name</th>
                                 <th scope="col">Data Type</th>
                                 <th scope="col">
@@ -178,6 +193,7 @@
                 document.getElementById('btn-export').disabled = true;
             }
             else {
+                File = '';
                 document.getElementById('btn-import').disabled = false;
                 document.getElementById('btn-export').disabled = true;
                 document.getElementById('dataTable').innerHTML = '';
@@ -201,10 +217,13 @@
             let reader = new FileReader();
             let f = csvFile.files[0];
             reader.onload = function(e) {
-                Data = arrayToTable(e.target.result, "data");
+                Data = arrayToTable(e.target.result);
                 console.log(Data);
+
+                Page = 1;
                 renderSetting();
-                renderTable(1);
+                renderTable(Page, getSettingParameters());
+    
             };
             reader.readAsText(f);
         }
@@ -225,35 +244,16 @@
             return resultArray;
         }
 
-        // 轉換html
-        function arrayToTable(result, keyName, option) {
-            var array = csvToArray(result); //this is where the csv array will be
+        // 陣列資料
+        function arrayToTable(result) {
+            let array = csvToArray(result); // csv to array
             let data = {};
-            let data_group_count = -1;
 
-            let null_row_flag = false; // 判斷每個row是否有null值
+            let row_column_type_line = 1; // 欄位型別判斷依據
+
+            let null_row_flag = false; // 判斷每個row是否有null值 (自動判斷型別依據)
             let null_doing_flag = true; // 是否需繼續做
 
-            let record_per_page = 25, // 每頁n筆
-                now_page = 1, // 第n頁
-                first_line_is_column_name = true; // 首欄為欄位名
-                ignore_first_line = 0; // 忽略第前面n行
-                ignore_last_line = 0; // 忽略後面n行
-                row_column_type_line = 1; // 欄位型別判斷
-                ignore_column = []; // 不存入的欄位
-
-            if(typeof option !== 'undefined') {
-                typeof option.record_per_page !== 'undefined' ? record_per_page : option.record_per_page;
-                typeof option.now_page !== 'undefined' ? now_page : option.now_page;
-                typeof option.first_line_is_column_name ? 'undefined' : option.first_line_is_column_name;
-                typeof option.ignore_first_line !== 'undefined' ? ignore_first_line : option.ignore_first_line;
-                typeof option.ignore_last_line !== 'undefined' ? ignore_last_line : option.ignore_last_line;
-                typeof option.row_column_type_line !== 'undefined' ? row_column_type_line : option.row_column_type_line;
-                typeof option.ignore_column !== 'undefined' ? ignore_column : option.ignore_column;
-            }
-            // 刪除忽略行數
-            if(ignore_first_line > 0) array = array.splice(0, ignore_first_line);
-            if(ignore_last_line > 0) array = array.splice(array.length - 1, ignore_last_line);
 
             // 配置html
             array.forEach(function(row, index) {
@@ -262,23 +262,15 @@
                     data.original = {};
                     data.original.head = row;
                     data.original.body = [];
-                    data.original.data = [];
-                    data.original.group_count = record_per_page;
                     data.export = {};
-                    data.export.ignore_column = [];
+                    data.export.ignore_column = []; // 不存入的欄位
                     row.forEach(function(col, i) {
                         data.export.ignore_column.push(1);
                     });
                 }
                 else {
                     null_row_flag = false;
-                    // 分組
-                    if( (index - 1) % record_per_page == 0 ) {
-                        data.original.body.push([]);
-                        data_group_count++;
-                    }
-                    data.original.body[data_group_count].push(row);
-                    data.original.data.push(row);
+                    data.original.body.push(row);
 
                     // 尋找最完整的row以作為column type判斷依據
                     if( null_doing_flag === true ) {
@@ -311,32 +303,64 @@
         }
 
         // 渲染表格
-        function renderTable(page) {
+        function renderTable(page, option) {
             let data = Data;
             let html = '';
             let html_head = '';
             let html_body = '';
             let head = data.original.head;
-            let body = data.original.body[page - 1];
-            let group = data.original.group_count;
+            let body = data.original.body;
+            
+            let record_per_page = 25; // 每頁 n 筆資料
+            let now_page = 1; // 第 n 頁
+            let ignore_start_lines = 0; // 忽略前 n 筆資料 (不含第一行(欄位名))
+            let ignore_end_lines = 0; // 忽略尾 n 筆資料
+            if(typeof option !== 'undefined') {
+                typeof option.record_per_page === 'undefined' ? record_per_page : record_per_page = option.record_per_page;
+                typeof option.now_page === 'undefined' ? now_page : now_page = option.now_page;
+                typeof option.ignore_start_lines === 'undefined' ? ignore_start_lines : ignore_start_lines = option.ignore_start_lines;
+                typeof option.ignore_end_lines === 'undefined' ? ignore_end_lines : ignore_end_lines = option.ignore_end_lines;
+            }
 
+            // 總頁數
+            data.pages =  parseInt(body.length / record_per_page);
+            body.length % record_per_page == 0 ? data.pages : data.pages++;
+
+            // view - column name
             head.forEach(function(col, i) {
                 if(i == 0) html_head += `<th></th>`;
                 if( data.export.ignore_column[i] == 1 ) html_head += `<th data-col="${i}" id="th-parent-${i}" class="th-parent">${col}</th>`;
                 if( data.export.ignore_column[i] == 0 ) html_head += `<th data-col="${i}" id="th-parent-${i}" class="th-parent th-ignore">${col}</th>`;
             });
             html_head = `<thead><tr>${html_head}</tr></thead>`;
-            body.forEach(function(row, index) {
-                html_body += '<tr>';
-                row.forEach(function(col, i) {
-                    if(i == 0) html_body += `<td>${group * (page - 1) + index + 1}</td>`;
-                    if( data.export.ignore_column[i] == 1 ) html_body += `<td data-col="${i}" class="th-child-${i}">${col}</td>`;
-                    if( data.export.ignore_column[i] == 0 ) html_body += `<td data-col="${i}" class="th-child-${i} th-ignore">${col}</td>`;
+
+            // view - column value
+            let index_start = (page - 1) * record_per_page; // 該頁數的第一筆資料之 index
+            let index_end = page * record_per_page; // 該頁數最後一筆資料之 index
+            let index_ignore_start_lines = ignore_start_lines - 1; // 忽略前幾行之 index
+            let index_ignore_end_lines = body.length - ignore_end_lines; // 忽略後幾行之 index
+
+            for(let i = index_start; i < index_end; i++) {
+                if(i > body.length - 1) break;
+                let html_temp = `<td>${i + 1}</td>`;
+                body[i].forEach(function(col, index) {
+                    if( ignore_start_lines > 0 && i <= index_ignore_start_lines ) {
+                        html_temp += `<td data-col="${index}" class="th-child-${index} row-ignore">${col}</td>`;
+                        return;
+                    }
+                    if( ignore_end_lines > 0 && i >= index_ignore_end_lines ) {
+                        html_temp += `<td data-col="${index}" class="th-child-${index} row-ignore">${col}</td>`;
+                        return;
+                    }
+
+                    if( data.export.ignore_column[index] == 1 ) html_temp += `<td data-col="${index}" class="th-child-${index}">${col}</td>`;
+                    if( data.export.ignore_column[index] == 0 ) html_temp += `<td data-col="${index}" class="th-child-${index} th-ignore">${col}</td>`;
                 });
-                html_body += '</tr>';
-            });
+                html_body += `<tr>${html_temp}</tr>`
+            }
             html_body = `<tbody><tr>${html_body}</tr></tbody>`;
 
+            // combine
             html += html_head;
             html += html_body
             document.getElementById('dataTable').innerHTML = html;
@@ -353,7 +377,7 @@
             });
         }
 
-        // 渲染設定
+        // 渲染 Column Setting button
         function renderSetting() {
             document.getElementById('setting_column_table').innerHTML = '';
             let names = Data.export.name;
@@ -363,7 +387,6 @@
                 let type = types[index];
                 html = `
                     <tr>
-
                         <td class="text-center align-middle">
                             <div class="text-center align-middle">
                                 <input class="form-check-input" style="width: 20px; height: 20px;" type="checkbox" value="1" data-col="${index}" id="isUsed_${index}" onChange="setColumnEnable(this, 'checkbox', this.checked)" checked>
@@ -405,8 +428,14 @@
         // 輸出
         function exportTable() {
             //document.getElementById('btn-export').disabled = true;
-            let ignore_start_lines = 1;
-            let ignore_end_lines = 2;
+            let option = getSettingParameters();
+            let ignore_start_lines = parseInt(option.ignore_start_lines);
+            let ignore_end_lines = parseInt(option.ignore_end_lines);
+
+            if( (ignore_start_lines + ignore_end_lines) > Data.original.body.length ) {
+                alert(`忽略行數超過總行數。\r忽略首行：${ignore_start_lines} | 忽略尾行：${ignore_end_lines}\r合計：${ignore_start_lines + ignore_end_lines} | 總行數：${Data.original.body.length}`);
+                return;
+            }
 
             let csvFile = document.getElementById("csvFile");
             if( Object.keys(Data).length === 0 ) return;
@@ -418,17 +447,6 @@
             let column_name = data.export.name;
 
             console.log(Data);
-
-            // data
-            let d = [];
-            data.original.data.forEach(function(row, index) {
-                if(index === 0) return;
-                d.push([]);
-                row.forEach(function(col, i) {
-                    if(ignore[i] == 0) return;
-                    d[index - 1].push(col);
-                });
-            });
 
             let headers = {
                 //"Content-Type": "multipart/form-data",
@@ -442,18 +460,16 @@
             let reader = new FileReader();
             reader.onload = function(e) {
                 let base64data = this.result; // base64
-
                 let chunkSize = 5 * 1024 * 1024; // 分割成5MB一組
                 let count = 0; // 發送成功chunk數
-                let num = 0; // 發送第N個chunk數
+                let num = 0; // 發送第 n 個chunk數
                 let progress = 0; // 進度條
                 let total = Math.ceil(base64data.length / chunkSize) + 1; // 總分割塊數 (+1為最後檔案處理的部分，給進度條顯示用)
                 for (let start = 0; start <= base64data.length; start += chunkSize) {
                     let chunk = base64data.slice(start, start + chunkSize);
-                    console.log(chunk);
-                    let formData = new FormData();
-    
+
                     // 發送json & file
+                    let formData = new FormData();
                     formData.append('name', file_name); // 檔名
                     formData.append('base64data', chunk); // chunk
                     formData.append('num', num); // 第N個chunk
@@ -489,9 +505,9 @@
                                 'column' : column_name, // columns name
                                 'type' : column_type, // colums type
                                 'ignore' : ignore, // ignore columns
-                                'count' : count // 檔案分割數
-                                'ignore_start_lines' : ignore_start_lines, // 省略行初
-                                'ignore_end_lines' : ignore_end_lines, // 省略行尾
+                                'count' : count, // 檔案分割數
+                                'ignore_start_lines' : ignore_start_lines, // 忽略前 n 行
+                                'ignore_end_lines' : ignore_end_lines, // 忽略後 n 行
                             };
     
                             fetch(`upload_finished`, {
@@ -523,7 +539,7 @@
         // 上下一頁
         function turnPage(page) {
             if( Object.keys(Data).length === 0 ) return;
-            if( (Page + page) > 0 && (Page + page) <= Data.original.body.length ) Page += page;
+            if( (Page + page) > 0 && (Page + page) <= Data.pages ) Page += page;
             pageAction(Page);
         }
 
@@ -534,18 +550,28 @@
                 return;
             }
             page = Number(page);
-            if( page > 0 && page <= Data.original.body.length ) Page = page;
+            if( page > 0 && page <= Data.pages ) Page = page;
             if( page < 0 ) Page = 1;
-            if( page > Data.original.body.length ) Page = Data.original.body.length;
+            if( page > Data.pages ) Page = Data.pages;
             document.getElementById('input-page').value = Page;
             pageAction(Page);
         }
 
         // 翻頁 action
         function pageAction(page) {
-            renderTable(page);
+            renderTable(page, getSettingParameters());
         }
 
+        // ====================================================================================================================================
+        // Table Setting Control
+        // 確認 Table Setting 是否有變更設定
+        function changeTableSetting() {
+            if(File != '') {
+                Page = 1;
+                renderSetting();
+                renderTable(Page, getSettingParameters());
+            }
+        }
 
         // ====================================================================================================================================
         // Column Setting Control
@@ -601,6 +627,47 @@
             Data.export.name[i] = name; // export json name change
         }
 
+        // 取得 Setting 參數
+        function getSettingParameters() {
+            let record_per_page = document.getElementById('setting_table_record_per_page').value;
+            let ignore_start_lines = document.getElementById('ignore_start_lines').value;
+            let ignore_end_lines = document.getElementById('ignore_end_lines').value;
+            let ignore_start_lines_check = document.getElementById('ignore_start_lines_check').checked;
+            let ignore_end_lines_check = document.getElementById('ignore_end_lines_check').checked;
 
+            if(ignore_start_lines_check == false) ignore_start_lines = 0;
+            if(ignore_end_lines_check == false) ignore_end_lines = 0;
+
+            let option = {
+                record_per_page : record_per_page,
+                ignore_start_lines : ignore_start_lines,
+                ignore_end_lines : ignore_end_lines,
+            }
+
+            return option;
+        }
+
+        function setIgnoreLinesChecked(name) {
+            let input = document.getElementById('ignore_start_lines');
+            let checkbox = document.getElementById('ignore_start_lines_check');
+            if(name === 'start') {
+                input = document.getElementById('ignore_start_lines');
+                checkbox = document.getElementById('ignore_start_lines_check');
+            }
+
+            if(name === 'end') {
+                input = document.getElementById('ignore_end_lines');
+                checkbox = document.getElementById('ignore_end_lines_check');
+            }
+
+            if(parseInt(input.value) <= 0) {
+                input.value = 0;
+                checkbox.checked = false;
+            }
+
+            if(parseInt(input.value) > 0) {
+                checkbox.checked = true;
+            }
+        }
     </script>
 @endsection

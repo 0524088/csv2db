@@ -77,7 +77,7 @@ class FunctionController extends Controller
 
                 $ignore_start_lines =  $request->input('ignore_start_lines');
                 $ignore_end_lines =  $request->input('ignore_end_lines');
-                // 刪去行尾
+                // 刪去後 n 行
                 $lines = file($file_w);
                 for($i = 0; $i < $ignore_end_lines; $i++) {
                     $last = sizeof($lines) - 1;
@@ -85,7 +85,7 @@ class FunctionController extends Controller
                 }
                 file_put_contents($file_w, $lines);
 
-                /*
+                /* 列出最後一行的文字
                 $fp = fopen($file_w, 'r+');
                 $cursor = -1;
                 $line = '';
@@ -101,7 +101,6 @@ class FunctionController extends Controller
                 }
                 */
  
-
                 $table_info = [
                     'name' => $request->input('name'),
                     'columns' => $request->input('column'),
@@ -118,7 +117,9 @@ class FunctionController extends Controller
                     if($insert_table_result['status'] === 'success') {
                         return response(['status' => 'success', 'message' => 'uploaded success!'], 200);
                     }
+                    return response($insert_table_result);
                 }
+                return response($create_table_result);
             }
             if( $count < $total ) return response(['status' => 'error', 'message' => 'lose files!', 'quantity' => ($count - $total)], 400); // 少分割數量 (有上傳失敗)
             if( $count > $total ) return response(['status' => 'error', 'message' => 'extra files!', 'quantity' => ($count - $total)], 400); // 多分割數量 (其他錯誤，多出檔案)
@@ -152,7 +153,7 @@ class FunctionController extends Controller
             catch(\Exception $e) {
                 DB::statement("DROP TABLE IF EXISTS `$table`");
                 $error = $e->getMessage();
-                return ['status' => 'error', 'message' => $error];
+                return ['status' => 'error', 'message' => "$table is already exist!"];
             }
         }
         catch(\Exceoption $e) {
@@ -167,7 +168,7 @@ class FunctionController extends Controller
             $table = $table_info['name'];
             $columns = $table_info['columns'];
             $ignore = $table_info['ignore'];
-            $ignore_start_lines = $table_info['ignore_start_lines'];
+            $ignore_start_lines = $table_info['ignore_start_lines'] + 1; // 首行為欄位名
 
             $file_collection_name = Session::get('token');
             $file = $table.'.csv';
