@@ -143,21 +143,13 @@
                         <thead>
                             <tr>
                                 <th scope="col">Using</th>
-                                <th scope="col">@Name</th>
+                                <th scope="col">{Parameter Name}</th>
                                 <th scope="col">Column Name</th>
                                 <th scope="col">Data Type</th>
                                 <th scope="col">
                                     Set Value
                                     <svg xmlns="http://www.w3.org/2000/svg" class="question-icon" data-toggle="tooltip" data-placement="top" title="Tooltip on top" width="16" height="16" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16">
-                                        <title>將欄位值做額外計算（需視其data type而定）</title>
-                                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                                        <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286zm1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94z"/>
-                                    </svg>
-                                </th>
-                                <th scope="col">
-                                    Regular Expression
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="question-icon" data-toggle="tooltip" data-placement="top" title="Tooltip on top" width="16" height="16" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16">
-                                        <title>將欄位值套用格式清理</title>
+                                        <title>使用 `{}` 來代入變數欄位。EX: `concat({col1}*100, '%')`</title>
                                         <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
                                         <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286zm1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94z"/>
                                     </svg>
@@ -175,9 +167,21 @@
     </div>
 </div>
     <script>
+        class ColumnSettingInfo {
+            index = 0;
+            get index() {
+                return this.index;
+            }
+
+            addindex(val) {
+                typeof val === 'undefined' ? this.index = 0 : this.index += val;
+            }
+        }
+
         var Data = {};
         var Page = 1;
         var File = '';
+        var Column_setting_info = new ColumnSettingInfo();
 
         // ====================================================================================================================================
         // file button
@@ -186,6 +190,7 @@
             progree = document.getElementById('progress_bar');
             progree.innerHTML = `0 %`;
             progree.style.width = `0%`;
+            Column_setting_info.addindex();
 
             let csvFile = document.getElementById("csvFile");
             if( csvFile.files.length === 0 || File === csvFile.files[0].name ) {
@@ -392,7 +397,7 @@
                                 <input class="form-check-input" style="width: 20px; height: 20px;" type="checkbox" value="1" data-col="${index}" id="isUsed_${index}" onChange="setColumnEnable(this, 'checkbox', this.checked)" checked>
                             </div>
                         </td>
-                        <td class="text-center align-middle">${index + 1}</td>
+                        <td class="text-center align-middle">col${index + 1}</td>
                         <td>
                             <div class="input-group" id="setting_column_name_${index}">
                                 <input type="text" class="form-control" placeholder="Column Name" data-col="${index}" onChange="setColumnName(this);" value="${value}">
@@ -411,15 +416,22 @@
                                 <input type="text" class="form-control" placeholder="Set Value">
                             </div>
                         </td>
-                        <td>
-                            <div class="input-group" id="setting_column_re_${index}">
-                                <input type="text" class="form-control" placeholder="Regular Expression">
-                            </div>
-                        </td>
                     </tr>`;
                 document.getElementById('setting_column_table').insertAdjacentHTML('beforeend', html);
                 document.getElementById(`setting_column_type_${index}`).value = type;
+                Column_setting_info.addindex(1);
             });
+
+            html = `
+                <tr id="tr_setting_add_column">
+                    <td class="text-center align-middle">
+                        <div class="text-center align-middle">
+                            <input type="button" name="setting_add_column" id="setting_add_column" value="➕" title="add column" onclick="addNewColumn();">
+                        </div>
+                    </td>
+                </tr>`
+            document.getElementById('setting_column_table').insertAdjacentHTML('beforeend', html);
+
         }
 
 
@@ -618,6 +630,7 @@
             }
 
         }
+
         // 更換欄位名字
         function setColumnName(e) {
             let name = e.value;
@@ -647,6 +660,7 @@
             return option;
         }
 
+        // setting column & data table column 互動
         function setIgnoreLinesChecked(name) {
             let input = document.getElementById('ignore_start_lines');
             let checkbox = document.getElementById('ignore_start_lines_check');
@@ -669,5 +683,46 @@
                 checkbox.checked = true;
             }
         }
+
+        // 新增 column
+        function addNewColumn() {
+            let index = Column_setting_info.index;
+            let html = `
+                    <tr id="tr_setting_delete_column_${index}">
+                        <td class="text-center align-middle">
+                            <div class="text-center align-middle">
+                                <input type="button" class="setting_delete_column" data-del="${index}" value="➖" title="delete column" onclick="removeNewColumn(this.dataset.del);">
+                            </div>
+                        </td>
+                        <td class="text-center align-middle">col${index + 1}</td>
+                        <td>
+                            <div class="input-group" id="setting_column_name_${index}">
+                                <input type="text" class="form-control" placeholder="Column Name" data-col="${index}" value="col${index + 1}">
+                            </div>
+                        </td>
+                        <td>
+                            <select class="form-select" id="setting_column_type_${index}">
+                                <option value="text" checked>Text</option>
+                                <option value="int">Int</option>
+                                <option value="decimal">Decimal</option>
+                                <option value="datatime">Datatime</option>
+                            </select>
+                        </td>
+                        <td>
+                            <div class="input-group" id="setting_column_sv_${index}">
+                                <input type="text" class="form-control" placeholder="Set Value" value="{col1}">
+                            </div>
+                        </td>
+                    </tr>`;
+            document.getElementById('tr_setting_add_column').insertAdjacentHTML('beforebegin', html);
+            Column_setting_info.addindex(1);
+        }
+
+        // 移除新增的 column
+        function removeNewColumn(index) {
+            let element = document.getElementById(`tr_setting_delete_column_${index}`);
+            element.parentNode.removeChild(element);
+        }
+
     </script>
 @endsection
