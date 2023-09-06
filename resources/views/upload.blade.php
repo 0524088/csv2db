@@ -53,9 +53,9 @@
     </div>
     
     <div class="" style="margin-top: 10px; margin-bottom: 5px;">
-        <button type="button" class="btn btn-sm btn-outline-dark" onclick="turnPage(-1);">Previous</button>
-        <input type="text" id="input-page" class="btn btn-sm col-1" style="color: #212529; border-color: #212529; cursor: text" onchange="specifiedPage(this.value)" placeholder="Page"/>
-        <button type="button" class="btn btn-sm btn-outline-dark" onclick="turnPage(1);">Next</button>
+        <button type="button" class="btn btn-sm btn-outline-dark page_control" onclick="turnPage(-1);">Previous</button>
+        <input type="text" id="input-page" class="btn btn-sm col-1 page_control" style="color: #212529; border-color: #212529; cursor: text" onchange="specifiedPage(this.value)" placeholder="Page"/>
+        <button type="button" class="btn btn-sm btn-outline-dark page_control" onclick="turnPage(1);">Next</button>
     </div>
     <table id="dataTable" class="table table table-dark table-bordered "></table>
 
@@ -72,10 +72,10 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="" style="visibility: hidden">
+                            <input class="form-check-input" type="checkbox" style="visibility: hidden">
                             <label class="form-check-label" for="recordPerPage">
                                 每頁
-                                <select class="" id="setting_table_record_per_page">
+                                <select class="form-select-sm" id="setting_table_record_per_page">
                                     <option value="25" checked>25</option>
                                     <option value="50">50</option>
                                     <option value="100">100</option>
@@ -87,15 +87,24 @@
                 </div>
                 <hr>
                 <h3 style="margin: 10px">上傳設定</h3>
-                <div class="row">
+                <div class="form-group row">
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" style="visibility:hidden">
+                            <label class="col-form-label">Table Name</label>
+                            <input class="col-xs-2" type="text" onchange="setTableName(this);" id="customTableName" placeholder="please import file first" readonly="readonly">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group row">
                     <div class="col-12">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" value="" id="addToExistTable">
                             <label class="form-check-label" for="addToExistTable">
                                 匯入到 Table&nbsp;
-                                <select class="" id="">
+                                <select class="form-select-sm" id="addToExistTable_name">
                                     @foreach ( $tables as $table )
-                                    <option value="{{ $table->TABLE_NAME }}">{{ $table->TABLE_NAME }}</option>
+                                    <option value="{{ $table->table_name }}">{{ $table->table_name }}</option>
                                     @endforeach
                                 </select>
                             </label>
@@ -107,7 +116,7 @@
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" value="" id="ignore_start_lines_check">
                             <label class="form-check-label">
-                                省略前&nbsp;<input type="number" value="0" name="ignore_start_lines" id="ignore_start_lines" style="width:20%" onchange="setIgnoreLinesChecked('start');">&nbsp;行
+                                省略前&nbsp;<input class="col-xs-2" type="number" value="0" name="ignore_start_lines" id="ignore_start_lines" style="width:20%" onchange="setIgnoreLinesChecked('start');">&nbsp;行
                             </label>
                         </div>
                     </div>
@@ -117,7 +126,7 @@
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" value="" id="ignore_end_lines_check">
                             <label class="form-check-label">
-                                省略後&nbsp;<input type="number" value="0" name="ignore_end_lines" id="ignore_end_lines" style="width:20%" onchange="setIgnoreLinesChecked('end');">&nbsp;行
+                                省略後&nbsp;<input class="col-xs-2" type="number" value="0" name="ignore_end_lines" id="ignore_end_lines" style="width:20%" onchange="setIgnoreLinesChecked('end');">&nbsp;行
                             </label>
                         </div>
                     </div>
@@ -187,24 +196,30 @@
         // file button
         // 切換檔案
         function fileChange() {
+            // 重置進度條
             progree = document.getElementById('progress_bar');
             progree.innerHTML = `0 %`;
             progree.style.width = `0%`;
-            Column_setting_info.addindex();
 
-            let csvFile = document.getElementById("csvFile");
-            if( csvFile.files.length === 0 || File === csvFile.files[0].name ) {
-                document.getElementById('btn-import').disabled = false;
-                document.getElementById('btn-export').disabled = true;
+            Column_setting_info.addindex(); // 欄位設定重置
+
+            document.getElementById('customTableName').readOnly = true; // 禁用 checkbox of table name
+            document.getElementById('customTableName').value = ''; // 重置 table name
+            
+            // 禁用翻頁
+            for (i = 0; i < document.getElementsByClassName('page_control').length; i++) { 
+                document.getElementsByClassName('page_control')[i].disabled = true;
             }
-            else {
-                File = '';
-                document.getElementById('btn-import').disabled = false;
-                document.getElementById('btn-export').disabled = true;
-                document.getElementById('dataTable').innerHTML = '';
-                Page = 1;
-                document.getElementById('input-page').value = '';
-            }
+
+            // 啟/禁用 import/export
+            document.getElementById('btn-import').disabled = false;
+            document.getElementById('btn-export').disabled = true;
+            File = '';
+            document.getElementById('btn-import').disabled = false;
+            document.getElementById('btn-export').disabled = true;
+            document.getElementById('dataTable').innerHTML = ''; // 重置表格
+            Page = 1; // 重置當前頁數
+            document.getElementById('input-page').value = ''; // 重置輸入頁數
         }
         
 
@@ -212,8 +227,14 @@
         // Import Button
         // 建立view表格
         function createTable() {
+            // 啟/禁用 import/export
             document.getElementById('btn-import').disabled = true;
             document.getElementById('btn-export').disabled = false;
+
+            // 啟用翻頁
+            for (i = 0; i < document.getElementsByClassName('page_control').length; i++) { 
+                document.getElementsByClassName('page_control')[i].disabled = false;
+            }
 
             let csvFile = document.getElementById("csvFile");
             if( csvFile.files.length === 0 || File === csvFile.files[0].name ) return;
@@ -292,6 +313,7 @@
             data.export.type = [];
             data.export.name = data.original.head;
 
+            // 判斷欄位型別
             let example = data.export.example;
             let types = data.export.type;
             example.forEach(function(row, index) {
@@ -345,6 +367,7 @@
             let index_ignore_start_lines = ignore_start_lines - 1; // 忽略前幾行之 index
             let index_ignore_end_lines = body.length - ignore_end_lines; // 忽略後幾行之 index
 
+            // 欄位css (是否不存入 row & 是否忽略 row)
             for(let i = index_start; i < index_end; i++) {
                 if(i > body.length - 1) break;
                 let html_temp = `<td>${i + 1}</td>`;
@@ -432,6 +455,9 @@
                 </tr>`
             document.getElementById('setting_column_table').insertAdjacentHTML('beforeend', html);
 
+            
+            document.getElementById('customTableName').readOnly = false;
+            document.getElementById('customTableName').value = csvFile.files[0].name.replace('.csv', '');
         }
 
 
@@ -441,9 +467,18 @@
         function exportTable() {
             //document.getElementById('btn-export').disabled = true;
             let option = getSettingParameters();
+            let insert_to_exist_table = document.getElementById('addToExistTable').checked;
+            let insert_to_exist_table_name = document.getElementById('addToExistTable_name').value;
             let ignore_start_lines = parseInt(option.ignore_start_lines);
             let ignore_end_lines = parseInt(option.ignore_end_lines);
 
+            // 插入 table 檢查
+            if( insert_to_exist_table == true && insert_to_exist_table_name == '' ) {
+                alert('請選擇欲插入 table');
+                return;
+            }
+
+            // 忽略行數檢查
             if( (ignore_start_lines + ignore_end_lines) > Data.original.body.length ) {
                 alert(`忽略行數超過總行數。\r忽略首行：${ignore_start_lines} | 忽略尾行：${ignore_end_lines}\r合計：${ignore_start_lines + ignore_end_lines} | 總行數：${Data.original.body.length}`);
                 return;
@@ -467,7 +502,7 @@
             }
 
             let file = csvFile.files[0];
-            let file_name = file.name.replace('.csv', '');
+            let table_name = document.getElementById('customTableName').value;
             // 轉成base64並分割上傳 (轉base64以避免utf8字元編碼被切割問題)
             let reader = new FileReader();
             reader.onload = function(e) {
@@ -482,7 +517,7 @@
 
                     // 發送json & file
                     let formData = new FormData();
-                    formData.append('name', file_name); // 檔名
+                    formData.append('name', table_name); // 檔名
                     formData.append('base64data', chunk); // chunk
                     formData.append('num', num); // 第N個chunk
     
@@ -513,13 +548,15 @@
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                             };
                             let body = {
-                                'name' : file_name, // table name
+                                'name' : table_name, // table name
                                 'column' : column_name, // columns name
                                 'type' : column_type, // colums type
                                 'ignore' : ignore, // ignore columns
                                 'count' : count, // 檔案分割數
                                 'ignore_start_lines' : ignore_start_lines, // 忽略前 n 行
                                 'ignore_end_lines' : ignore_end_lines, // 忽略後 n 行
+                                'insert_to_exist_table' : insert_to_exist_table, // 是否插入已存在的 table
+                                'insert_to_exist_table_name' : insert_to_exist_table_name, // 插入已存在的 table name
                             };
     
                             fetch(`upload_finished`, {
@@ -530,10 +567,37 @@
                             .then(response => response.json())
                             .then((data) => {
                                 console.log(data);
-                                if( progress == 100 ) {
-                                    element.classList.remove('bg-warning');
-                                    element.classList.add('bg-success');
+                                if(data.status === 'success') {
+                                    if( progress == 100 ) {
+                                        element.classList.remove('bg-warning');
+                                        element.classList.add('bg-success');
+                                    }
+
+                                    if( insert_to_exist_table == true ) {
+                                        toastr.success(`insert success!\ntable: "${insert_to_exist_table_name}"`);
+                                    }
+
+                                    if( insert_to_exist_table == false ) {
+                                        toastr.success(`export success!\ntable: "${table_name}"`);
+                                        getTablesName().then((data) => {
+                                            let tables_name = data;
+                                            console.log(tables_name);
+                                            if( tables_name !== false ) {
+                                                let element = document.getElementById('addToExistTable_name');
+                                                let html = '';
+
+                                                tables_name.forEach(function(value) {
+                                                    html += `<option value="${value.table_name}">${value.table_name}</option>`
+                                                });
+                                                element.innerHTML = html;
+                                            }
+                                        });
+
+                                    }
+                                } else {
+                                    alert(data.message);
                                 }
+
                             })
                             .catch(error => console.error(error));
                         }
@@ -631,6 +695,17 @@
 
         }
 
+        // 更改表名
+        function setTableName(e) {
+            getTablesName().then((data) => {
+                let tables_name = data;
+                if( tables_name !== false && tables_name.find(v => v.table_name === e.value)) {
+                    toastr.error(`${e.value} is exist!\nPlease change another name`);
+                    e.value = csvFile.files[0].name.replace('.csv', '');
+                }
+            });
+        }
+
         // 更換欄位名字
         function setColumnName(e) {
             let name = e.value;
@@ -724,5 +799,29 @@
             element.parentNode.removeChild(element);
         }
 
+        // 判斷 table name 是否已存在資料庫
+        function getTablesName() {
+            return new Promise(function(resolve, reject) {
+                let headers = {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                };
+                fetch('tables_name', {
+                    method : 'get',
+                    headers : headers
+                })
+                .then(response => response.json())
+                .then((data) => {
+                    console.log(data);
+                    if(data.status === 'success') {
+                        resolve(data.data);
+                    } else {
+                        reject(data.message);
+                    }
+                })
+                .catch(error => console.error(error));
+            });
+        }
     </script>
 @endsection

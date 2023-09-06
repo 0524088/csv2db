@@ -8,6 +8,7 @@ use DB;
 use Storage;
 use Illuminate\Support\Str;
 use Session;
+use Exception;
 
 class FunctionController extends Controller
 {
@@ -28,8 +29,7 @@ class FunctionController extends Controller
                 'original_file_name' => $file_name,
                 'chunk_file_name' => $file_save_name,
             ], 200);
-        }
-        catch(\Exception $e) {
+        } catch(\Exception $e) {
             $error = $e->getMessage();
             return response(['status' => 'error', 'message' => $error], 200);
         }
@@ -42,6 +42,7 @@ class FunctionController extends Controller
             $file_collection_name = Session::get('token');
             $total = count(Storage::disk('test_file')->files("$file_collection_name")); // 總檔案數
             $file_name = $request->input('name');
+            $insert_to_exist_table =  $request->input('insert_to_exist_table');
 
             if( $count == $total ) {
                 $write_flag = false;
@@ -107,11 +108,24 @@ class FunctionController extends Controller
                     'types' => $request->input('type'),
                     'ignore' => $request->input('ignore'),
                     'ignore_start_lines' => $ignore_start_lines,
-                    'ignore_end_lines' => $ignore_end_lines
+                    'ignore_end_lines' => $ignore_end_lines,
+                    'insert_to_exist_table' => $insert_to_exist_table,
+                    'insert_to_exist_table_name' => $request->input('insert_to_exist_table_name'),
                 ];
+
                 // 創建table
-                $create_table_result = $this->createTable($table_info);
-                if($create_table_result['status'] === 'success') {
+                if($insert_to_exist_table == false) {
+                    $create_table_result = $this->createTable($table_info);
+                    if($create_table_result['status'] === 'success') {
+                        // 讀取csv並存入table
+                        $insert_table_result = $this->insertData($table_info);
+                        if($insert_table_result['status'] === 'success') {
+                            return response(['status' => 'success', 'message' => 'uploaded success!'], 200);
+                        }
+                        return response($insert_table_result);
+                    }
+                    return response($create_table_result);
+                } else {
                     // 讀取csv並存入table
                     $insert_table_result = $this->insertData($table_info);
                     if($insert_table_result['status'] === 'success') {
@@ -119,12 +133,11 @@ class FunctionController extends Controller
                     }
                     return response($insert_table_result);
                 }
-                return response($create_table_result);
+
             }
             if( $count < $total ) return response(['status' => 'error', 'message' => 'lose files!', 'quantity' => ($count - $total)], 400); // 少分割數量 (有上傳失敗)
             if( $count > $total ) return response(['status' => 'error', 'message' => 'extra files!', 'quantity' => ($count - $total)], 400); // 多分割數量 (其他錯誤，多出檔案)
-        }
-        catch(\Exceoption $e) {
+        } catch(Exception $e) {
             $error = $e->getMessage();
             return response(['status' => 'error', 'message' => $error], 400);
         }
@@ -151,12 +164,14 @@ class FunctionController extends Controller
                 return ['status' => 'success', 'message' => "$table is created success!"];
             }
             catch(\Exception $e) {
-                DB::statement("DROP TABLE IF EXISTS `$table`");
+                //DB::statement("DROP TABLE IF EXISTS `$table`");
+                $file = $table_info['name'].'.csv';
+                $file_collection_name = Session::get('token');
+                Storage::disk('test_file')->delete("$file_collection_name/$file");
                 $error = $e->getMessage();
                 return ['status' => 'error', 'message' => "$table is already exist!"];
             }
-        }
-        catch(\Exceoption $e) {
+        } catch(Exception $e) {
             $error = $e->getMessage();
             return ['status' => 'error', 'message' => $error];
         }
@@ -165,13 +180,21 @@ class FunctionController extends Controller
 
     function insertData($table_info) {
         try {
-            $table = $table_info['name'];
+            
             $columns = $table_info['columns'];
             $ignore = $table_info['ignore'];
             $ignore_start_lines = $table_info['ignore_start_lines'] + 1; // 首行為欄位名
 
+            // 插入現有 table
+            $insert_to_exist_table = $table_info['insert_to_exist_table'];
+            if($insert_to_exist_table == true) {
+                $table = $table_info['insert_to_exist_table_name'];
+            } else {
+                $table = $table_info['name'];
+            }
+            
             $file_collection_name = Session::get('token');
-            $file = $table.'.csv';
+            $file = $table_info['name'].'.csv';
             $path = Storage::disk('test_file')->path("$file_collection_name/$file");
 
             $path = str_replace('\\', '\\\\', $path); // php反斜線為保留字，需用\\代替；MySQL\亦為保留字
@@ -197,12 +220,24 @@ class FunctionController extends Controller
 
             Storage::disk('test_file')->delete("$file_collection_name/$file"); // 匯入成功刪除檔案
             return ['status' => 'success', 'message' => "inserted data into $table success!"];
-        }
-        catch(\Exceoption $e) {
-            DB::statement("DROP TABLE IF EXISTS `$table`");
+        } catch(Exception $e) {
+            //DB::statement("DROP TABLE IF EXISTS `$table`");
             Storage::disk('test_file')->delete("$file_collection_name/$file");
             $error = $e->getMessage();
             return ['status' => 'error', 'message' => $error];
+        }
+    }
+    
+    // 取得全部 table 名
+    function get_tables_name() {
+        try {
+            $db_name = env('DB_DATABASE');
+            $tables = DB::select("SELECT table_name 
+                                        FROM (SELECT table_name FROM information_schema.tables WHERE table_schema = '$db_name') as t WHERE table_name <> 'users'");
+            return response(['status' => 'success', 'data' => $tables], 200);
+        } catch(Exception $e) {
+            $error = $e->getMessage();
+            return response(['status' => 'error', 'message' => $error], 400);
         }
     }
 }

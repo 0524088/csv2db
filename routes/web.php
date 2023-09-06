@@ -30,6 +30,8 @@ Route::post('login', [UserController::class, 'login']);
 Route::middleware(['ajax.login.check'])->group(function () {
     Route::post('logout', [UserController::class, 'logout']);
 
+    Route::get('tables_name', [FunctionController::class, 'get_tables_name']); // 取的全部 table 名
+
     Route::post('upload', [FunctionController::class, 'upload']); // 上傳檔案
     Route::post('upload_finished', [FunctionController::class, 'upload_finished']); // 處理檔案
 });

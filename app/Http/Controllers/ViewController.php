@@ -23,8 +23,9 @@ class ViewController extends Controller
     }
 
     function upload() {
+        $db_name = env('DB_DATABASE');
         $tables = DB::select("SELECT table_name 
-                                FROM (SELECT table_name FROM information_schema.tables WHERE table_schema = 'csv2db') as t WHERE table_name <> 'users'");
+                                FROM (SELECT table_name FROM information_schema.tables WHERE table_schema = '$db_name') as t WHERE table_name <> 'users'");
         return view('upload', compact('tables'));
     }
 
