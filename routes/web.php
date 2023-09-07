@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ViewController;
-use App\Http\Controllers\FunctionController;
+use App\Http\Controllers\AjaxController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,8 +30,9 @@ Route::post('login', [UserController::class, 'login']);
 Route::middleware(['ajax.login.check'])->group(function () {
     Route::post('logout', [UserController::class, 'logout']);
 
-    Route::get('tables_name', [FunctionController::class, 'get_tables_name']); // 取的全部 table 名
+    Route::post('upload', [AjaxController::class, 'upload']); // 上傳檔案
+    Route::post('upload_finished', [AjaxController::class, 'upload_finished']); // 處理檔案
 
-    Route::post('upload', [FunctionController::class, 'upload']); // 上傳檔案
-    Route::post('upload_finished', [FunctionController::class, 'upload_finished']); // 處理檔案
+    Route::get('tables_name', [AjaxController::class, 'getTablesName']); // 取得全部 table 名
+    Route::get('table_columns_info', [AjaxController::class, 'getTableColumnsInfo']); // 取得 table 下的 column 資訊
 });

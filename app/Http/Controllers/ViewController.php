@@ -24,9 +24,17 @@ class ViewController extends Controller
 
     function upload() {
         $db_name = env('DB_DATABASE');
-        $tables = DB::select("SELECT table_name 
-                                FROM (SELECT table_name FROM information_schema.tables WHERE table_schema = '$db_name') as t WHERE table_name <> 'users'");
-        return view('upload', compact('tables'));
+        $tables = app('App\Http\Functions\DatabaseManipulate')->getTablesName();
+        if($tables['status'] === 'success') {
+            $tables = $tables['data'];
+            return view('upload', compact('tables'));
+        } else {
+            $data = [
+                'type' => 'danger',
+                'message' => $tables['message']
+            ];
+            return view('error')->with($data);
+        }
     }
 
     function chart() {

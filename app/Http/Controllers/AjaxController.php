@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use Response;
 use Illuminate\Http\Request;
 use Log;
@@ -10,7 +11,7 @@ use Illuminate\Support\Str;
 use Session;
 use Exception;
 
-class FunctionController extends Controller
+class AjaxController extends Controller
 {
     // 上傳檔案 (分割檔)
     function upload(Request $request) {
@@ -115,10 +116,10 @@ class FunctionController extends Controller
 
                 // 創建table
                 if($insert_to_exist_table == false) {
-                    $create_table_result = $this->createTable($table_info);
+                    $create_table_result = app('App\Http\Functions\DatabaseManipulate')->createTable($table_info);
                     if($create_table_result['status'] === 'success') {
                         // 讀取csv並存入table
-                        $insert_table_result = $this->insertData($table_info);
+                        $insert_table_result = app('App\Http\Functions\DatabaseManipulate')->insertData($table_info);
                         if($insert_table_result['status'] === 'success') {
                             return response(['status' => 'success', 'message' => 'uploaded success!'], 200);
                         }
@@ -127,7 +128,7 @@ class FunctionController extends Controller
                     return response($create_table_result);
                 } else {
                     // 讀取csv並存入table
-                    $insert_table_result = $this->insertData($table_info);
+                    $insert_table_result = app('App\Http\Functions\DatabaseManipulate')->insertData($table_info);
                     if($insert_table_result['status'] === 'success') {
                         return response(['status' => 'success', 'message' => 'uploaded success!'], 200);
                     }
@@ -143,98 +144,31 @@ class FunctionController extends Controller
         }
     }
 
-    function createTable($table_info) {
-        try {
-            $table = $table_info['name'];
-            $columns = $table_info['columns'];
-            $types = $table_info['types'];
-            $ignore = $table_info['ignore'];
-
-            $sql_columns = '';
-            foreach($columns as $index => $column) {
-                if($ignore[$index] == 0) continue;
-                $type = $types[$index];
-                $sql_columns .= "`$column` $type,";
-            }
-            $sql_columns = substr($sql_columns, 0, -1); // 刪去逗號
-
-            try {
-                // 處理表首
-                DB::statement("CREATE TABLE `$table` ($sql_columns)");
-                return ['status' => 'success', 'message' => "$table is created success!"];
-            }
-            catch(\Exception $e) {
-                //DB::statement("DROP TABLE IF EXISTS `$table`");
-                $file = $table_info['name'].'.csv';
-                $file_collection_name = Session::get('token');
-                Storage::disk('test_file')->delete("$file_collection_name/$file");
-                $error = $e->getMessage();
-                return ['status' => 'error', 'message' => "$table is already exist!"];
-            }
-        } catch(Exception $e) {
-            $error = $e->getMessage();
-            return ['status' => 'error', 'message' => $error];
-        }
-    }
-
-
-    function insertData($table_info) {
-        try {
-            
-            $columns = $table_info['columns'];
-            $ignore = $table_info['ignore'];
-            $ignore_start_lines = $table_info['ignore_start_lines'] + 1; // 首行為欄位名
-
-            // 插入現有 table
-            $insert_to_exist_table = $table_info['insert_to_exist_table'];
-            if($insert_to_exist_table == true) {
-                $table = $table_info['insert_to_exist_table_name'];
-            } else {
-                $table = $table_info['name'];
-            }
-            
-            $file_collection_name = Session::get('token');
-            $file = $table_info['name'].'.csv';
-            $path = Storage::disk('test_file')->path("$file_collection_name/$file");
-
-            $path = str_replace('\\', '\\\\', $path); // php反斜線為保留字，需用\\代替；MySQL\亦為保留字
-            
-            // 拼接代入column
-            $sql_parameters = '';
-            foreach($columns as $index => $column) {
-                if($ignore[$index] == 0) {
-                    $sql_parameters .= "@temp,";
-                } else {
-                    $sql_parameters .= "`$column`,";
-                }
-            }
-            $sql_parameters = substr($sql_parameters, 0, -1); // 刪去逗號
-
-            // 匯入csv
-            DB::statement("LOAD DATA INFILE '$path' INTO TABLE `$table`
-            CHARACTER SET utf8mb4
-            fields terminated BY ','
-            lines terminated by '\\r\\n'
-            ignore $ignore_start_lines lines
-            ($sql_parameters)");
-
-            Storage::disk('test_file')->delete("$file_collection_name/$file"); // 匯入成功刪除檔案
-            return ['status' => 'success', 'message' => "inserted data into $table success!"];
-        } catch(Exception $e) {
-            //DB::statement("DROP TABLE IF EXISTS `$table`");
-            Storage::disk('test_file')->delete("$file_collection_name/$file");
-            $error = $e->getMessage();
-            return ['status' => 'error', 'message' => $error];
-        }
-    }
-    
     // 取得全部 table 名
-    function get_tables_name() {
+    function getTablesName() {
         try {
-            $db_name = env('DB_DATABASE');
-            $tables = DB::select("SELECT table_name 
-                                        FROM (SELECT table_name FROM information_schema.tables WHERE table_schema = '$db_name') as t WHERE table_name <> 'users'");
-            return response(['status' => 'success', 'data' => $tables], 200);
+            $tables = app('App\Http\Functions\DatabaseManipulate')->getTablesName();
+            if($tables['status'] === 'success') {
+                return response(['status' => 'success' , 'data' => $tables['data']], 200);
+            } else {
+                return response(['status' => 'error', 'data' => $tables['message']], 400);
+            }
+        } catch(Exception $e) {
+            $error = $e->getMessage();
+            return response(['status' => 'error', 'message' => $error], 400);
+        }
+    }
+
+    // 取得 table 下的 column 資訊
+    function getTableColumnsInfo(Request $request) {
+        try {
+            $table_name = $request->input('table_name');
+            $columns_info = app('App\Http\Functions\DatabaseManipulate')->getTableColumnsInfo($table_name);
+            if($columns_info['status'] === 'success') {
+                return response(['status' => 'success', 'data' => $columns_info['data']], 200);
+            } else {
+                return response(['status' => 'error', 'data' => $columns_info['message']], 400);
+            }
         } catch(Exception $e) {
             $error = $e->getMessage();
             return response(['status' => 'error', 'message' => $error], 400);

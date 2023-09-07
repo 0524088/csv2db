@@ -813,7 +813,6 @@
                 })
                 .then(response => response.json())
                 .then((data) => {
-                    console.log(data);
                     if(data.status === 'success') {
                         resolve(data.data);
                     } else {
@@ -822,6 +821,36 @@
                 })
                 .catch(error => console.error(error));
             });
+        }
+
+        // 取得 table columns 資訊
+        function getTableColumnsInfo() {
+            if( document.getElementById('addToExistTable').checked === true ) {
+                return new Promise(function(resolve, reject) {
+                    let table_name = document.getElementById('addToExistTable_name').value;
+                    let headers = {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    };
+                    fetch('table_columns_info?' + new URLSearchParams({
+                        "table_name" : table_name,
+                    }), {
+                        method : 'get',
+                        headers : headers
+                    })
+                    .then(response => response.json())
+                    .then((data) => {
+                        console.log(data);
+                        if(data.status === 'success') {
+                            resolve(data.data);
+                        } else {
+                            reject(data.message);
+                        }
+                    })
+                    .catch(error => console.error(error));                
+                });
+            }
         }
     </script>
 @endsection
