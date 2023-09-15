@@ -103,8 +103,8 @@
                             <label class="form-check-label" for="addToExistTable">
                                 匯入到 Table&nbsp;
                                 <select class="form-select-sm" id="addToExistTable_name">
-                                    @foreach ( $tables['data'] as $table )
-                                    <option value="{{ $tables['keyword']($table->TABLE_NAME) }}">{{ $tables['keyword']($table->TABLE_NAME) }}</option>
+                                    @foreach ( $tables as $table )
+                                    <option value="{{ $table->TABLE_NAME }}">{{ $table->TABLE_NAME }}</option>
                                     @endforeach
                                 </select>
                             </label>
