@@ -103,8 +103,8 @@
                             <label class="form-check-label" for="addToExistTable">
                                 匯入到 Table&nbsp;
                                 <select class="form-select-sm" id="addToExistTable_name">
-                                    @foreach ( $tables as $table )
-                                    <option value="{{ $table->table_name }}">{{ $table->table_name }}</option>
+                                    @foreach ( $tables['data'] as $table )
+                                    <option value="{{ $tables['keyword']($table->TABLE_NAME) }}">{{ $tables['keyword']($table->TABLE_NAME) }}</option>
                                     @endforeach
                                 </select>
                             </label>
@@ -286,15 +286,43 @@
                 // 首行為欄位名稱
                 if( index == 0 ) {
                     data.original = {};
-                    data.original.head = row;
                     data.original.body = [];
                     data.export = {};
                     data.export.ignore_column = []; // 不存入的欄位
+
+                    let duplicates = []; // 檢查欄位名稱是否有重複
+                    let duplicates_count = []; // 重複次數
                     row.forEach(function(col, i) {
-                        data.export.ignore_column.push(1);
+                        data.export.ignore_column.push(1); // 替每個欄位上記號，預設存入欄位
+
+                        // 檢查欄位名稱有無重複========================================
+                            let index = duplicates.indexOf(col);
+                            if(index !== -1) {
+                                duplicates_count[index]++;
+                                row[i] = `${row[i]} (${duplicates_count[index]})`;
+                            }
+                            else {
+                                duplicates.push(col); // 檢查通過
+                                duplicates_count.push(1); // 該欄位名目前出現次數
+                            }
+                        // end of 檢查欄位名稱有無重複=================================
                     });
+                    data.original.head = row; // 放入檢查後的欄位列
                 }
                 else {
+                    // 若資料小於欄位數補 null
+                    if(row.length < data.original.head.length) {
+                        toastr.error(`資料大於欄位資料數，請檢查你的csv檔案<br>錯誤列：${index + 1}`);
+                        fileChange();
+                        throw new Error(`資料大於欄位資料數，請檢查你的csv檔案\n錯誤列：${index + 1}`);
+                    }
+
+                    if(row.length > data.original.head.length) {
+                        toastr.error(`資料小於欄位資料數，請檢查你的csv檔案<br>錯誤列：${index + 1}`);
+                        fileChange();
+                        throw new Error(`資料小於欄位資料數，請檢查你的csv檔案\n錯誤列：${index + 1}`);
+                    }
+
                     null_row_flag = false;
                     data.original.body.push(row);
 
@@ -474,13 +502,13 @@
 
             // 插入 table 檢查
             if( insert_to_exist_table == true && insert_to_exist_table_name == '' ) {
-                alert('請選擇欲插入 table');
+                toastr.error('請選擇欲插入 table');
                 return;
             }
 
             // 忽略行數檢查
             if( (ignore_start_lines + ignore_end_lines) > Data.original.body.length ) {
-                alert(`忽略行數超過總行數。\r忽略首行：${ignore_start_lines} | 忽略尾行：${ignore_end_lines}\r合計：${ignore_start_lines + ignore_end_lines} | 總行數：${Data.original.body.length}`);
+                toastr.error(`忽略行數超過總行數。<br>忽略首行：${ignore_start_lines} | 忽略尾行：${ignore_end_lines}<br>合計：${ignore_start_lines + ignore_end_lines} | 總行數：${Data.original.body.length}`);
                 return;
             }
 
@@ -574,11 +602,11 @@
                                     }
 
                                     if( insert_to_exist_table == true ) {
-                                        toastr.success(`insert success!\ntable: "${insert_to_exist_table_name}"`);
+                                        toastr.success(`insert success!<br>table: "${insert_to_exist_table_name}"`);
                                     }
 
                                     if( insert_to_exist_table == false ) {
-                                        toastr.success(`export success!\ntable: "${table_name}"`);
+                                        toastr.success(`export success!<br>table: "${table_name}"`);
                                         getTablesName().then((data) => {
                                             let tables_name = data;
                                             console.log(tables_name);
@@ -595,7 +623,7 @@
 
                                     }
                                 } else {
-                                    alert(data.message);
+                                    toastr.error(data.message);
                                 }
 
                             })
@@ -700,7 +728,7 @@
             getTablesName().then((data) => {
                 let tables_name = data;
                 if( tables_name !== false && tables_name.find(v => v.table_name === e.value)) {
-                    toastr.error(`${e.value} is exist!\nPlease change another name`);
+                    toastr.error(`${e.value} is exist!<br>Please change another name`);
                     e.value = csvFile.files[0].name.replace('.csv', '');
                 }
             });
@@ -709,8 +737,12 @@
         // 更換欄位名字
         function setColumnName(e) {
             let name = e.value;
-            if(name == '') name = 'column';
             let i = e.dataset.col;
+            if(name == '') {
+                name = `col${Number(i) + 1}`;
+                e.value = name;
+                toastr.error("column name can't not be null!<br>");
+            }
             document.getElementById(`th-parent-${i}`).innerHTML = name; // table column name change
             Data.export.name[i] = name; // export json name change
         }
