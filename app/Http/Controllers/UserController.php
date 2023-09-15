@@ -26,11 +26,11 @@ class UserController extends Controller
                 'account' => 'required|string',
                 'password' => 'required|string',
             ]);
-            if( $validator->fails() ) return response(['status' => 'error', 'message' => 'please input account and password'], 400);
+            if( $validator->fails() ) return response(['status' => 'error', 'message' => '請輸入帳號密碼'], 400);
     
             // 判斷使用者名稱是否重複
             $user = User::firstOrNew(['account' =>  $account]);
-            if($user->exists === true) return response(['status' => 'error', 'message' => 'account is already exist!'], 400);
+            if($user->exists === true) return response(['status' => 'error', 'message' => '帳號已存在！'], 400);
     
             $token = Str::random(80);
             $user = User::Create([
@@ -59,15 +59,15 @@ class UserController extends Controller
                 'account' => 'required|string',
                 'password' => 'required|string',
             ]);
-            if( $validator->fails() ) return response(['status' => 'error', 'message' => 'please input account and password'], 400);
+            if( $validator->fails() ) return response(['status' => 'error', 'message' => '請輸入帳號密碼'], 400);
     
     
             $user = User::where('account', $account)->first();
             // 判斷帳號是否存在
-            if($user === null) return response(['status' => 'error', 'message' => 'account is not exist!'], 400);
+            if($user === null) return response(['status' => 'error', 'message' => '帳號不存在'], 400);
     
             // 判斷密碼是否匹配
-            if(!Hash::check($password, $user->password)) return response(['status' => 'error', 'message' => 'account and password is not match!'], 400);
+            if(!Hash::check($password, $user->password)) return response(['status' => 'error', 'message' => '帳號或密碼錯誤！'], 400);
     
             $token = Str::random(80);
             $user->update([
@@ -76,7 +76,7 @@ class UserController extends Controller
             ]);
     
             Session::put('token', $token);
-            return response(['status' => 'success', 'message' => 'login success'], 200);
+            return response(['status' => 'success', 'message' => '登入成功！'], 200);
         }
         catch(\Exception $e) {
             $error = $e->getMessage();
@@ -88,18 +88,18 @@ class UserController extends Controller
         try{
             // 尚未登入
             if(!Session::has('token')) {
-                return response(['status' => 'error', 'message' => 'user is not logged in!'], 400);
+                return response(['status' => 'error', 'message' => '尚未登入！'], 400);
             }
 
             // 異地登入
             $token = Session::get('token');
             $user = User::where('token', $token)->first();
-            if($user === null) return response(['status' => 'error', 'message' => 'user is not found!'], 400);
+            if($user === null) return response(['status' => 'error', 'message' => '用戶已於其他地方登入'], 400);
     
             // 登出流程
             $user = User::where('token', $user->token)->update(['token' => null, 'updated_at' => Carbon::now()]);
             Session::flush();
-            return response(['status' => 'success', 'message' => 'logout success'], 200);
+            return response(['status' => 'success', 'message' => '登出成功！'], 200);
         }
         catch(\Exception $e) {
             $error = $e->getMessage();

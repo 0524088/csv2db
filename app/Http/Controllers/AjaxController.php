@@ -121,7 +121,7 @@ class AjaxController extends Controller
                         // 讀取csv並存入table
                         $insert_table_result = app('App\Http\Functions\DatabaseManipulate')->insertData($table_info);
                         if($insert_table_result['status'] === 'success') {
-                            return response(['status' => 'success', 'message' => 'uploaded success!'], 200);
+                            return response(['status' => 'success', 'message' => '上傳成功！'], 200);
                         }
                         return response($insert_table_result);
                     }
@@ -130,14 +130,14 @@ class AjaxController extends Controller
                     // 讀取csv並存入table
                     $insert_table_result = app('App\Http\Functions\DatabaseManipulate')->insertData($table_info);
                     if($insert_table_result['status'] === 'success') {
-                        return response(['status' => 'success', 'message' => 'uploaded success!'], 200);
+                        return response(['status' => 'success', 'message' => '上傳成功！'], 200);
                     }
                     return response($insert_table_result);
                 }
 
             }
-            if( $count < $total ) return response(['status' => 'error', 'message' => 'lose files!', 'quantity' => ($count - $total)], 400); // 少分割數量 (有上傳失敗)
-            if( $count > $total ) return response(['status' => 'error', 'message' => 'extra files!', 'quantity' => ($count - $total)], 400); // 多分割數量 (其他錯誤，多出檔案)
+            if( $count < $total ) return response(['status' => 'error', 'message' => '遺失檔案！', 'quantity' => ($count - $total)], 400); // 少分割數量 (有上傳失敗)
+            if( $count > $total ) return response(['status' => 'error', 'message' => '多餘檔案！', 'quantity' => ($count - $total)], 400); // 多分割數量 (其他錯誤，多出檔案)
         } catch(Exception $e) {
             $error = $e->getMessage();
             return response(['status' => 'error', 'message' => $error], 400);

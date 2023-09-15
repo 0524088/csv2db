@@ -32,13 +32,21 @@ class DatabaseManipulate
             try {
                 // 處理表首
                 DB::statement("CREATE TABLE `$table` ($sql_columns)");
-                return ['status' => 'success', 'message' => "$table is created success!"];
+                return ['status' => 'success', 'message' => "$table 創建成功！"];
             } catch(\Exception $e) {
                 //DB::statement("DROP TABLE IF EXISTS `$table`");
+                // 刪除上傳的檔案
                 $file = $table_info['name'].'.csv';
                 $file_collection_name = Session::get('token');
                 Storage::disk('test_file')->delete("$file_collection_name/$file");
+
                 $error = $e->getMessage();
+
+                if(isset($e->getPrevious()->errorInfo[0])) {
+                    $error_sql_error_code = '42S01';
+                    $error = "$table 已存在！";
+                }
+
                 return ['status' => 'error', 'message' => $error];
             }
         } catch(Exception $e) {
@@ -89,7 +97,7 @@ class DatabaseManipulate
             ($sql_parameters)");
 
             Storage::disk('test_file')->delete("$file_collection_name/$file"); // 匯入成功刪除檔案
-            return ['status' => 'success', 'message' => "inserted data into $table success!"];
+            return ['status' => 'success', 'message' => "匯入資料至 $table 成功！"];
         } catch(Exception $e) {
             //DB::statement("DROP TABLE IF EXISTS `$table`");
             Storage::disk('test_file')->delete("$file_collection_name/$file");
