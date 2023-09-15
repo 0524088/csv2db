@@ -20,6 +20,8 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.css" rel="stylesheet"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.js"></script>
 
+    <script src="{{ asset('js/toastr-option.js') }}"></script>
+    
     <style>
         .gradient-custom {
         /* fallback for old browsers */
