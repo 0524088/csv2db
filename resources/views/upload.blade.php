@@ -92,7 +92,8 @@
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" style="visibility:hidden">
                             <label class="col-form-label">Table Name</label>
-                            <input class="col-xs-2" type="text" onchange="setTableName(this);" id="customTableName" placeholder="please import file first" readonly="readonly">
+                            <input class="col-xs-2" type="text" onchange="setTableName(this);" id="customTableName" placeholder="請先上傳檔案" readonly="readonly">
+                            <img class="img-loading" id="get_tables_name-loading" src={{ asset('images/loading.gif') }} style="width: 32px; height: 32px; display: none;">
                         </div>
                     </div>
                 </div>
@@ -670,7 +671,7 @@
         // Table Setting Control
         // 確認 Table Setting 是否有變更設定
         function changeTableSetting() {
-            if(File != '') {
+            if(File == '') {
                 Page = 1;
                 renderSetting();
                 renderTable(Page, getSettingParameters());
@@ -727,8 +728,9 @@
         function setTableName(e) {
             getTablesName().then((data) => {
                 let tables_name = data;
-                if( tables_name !== false && tables_name.find(v => v.table_name === e.value)) {
-                    toastr.error(`${e.value} is exist!<br>Please change another name`);
+                document.getElementById('get_tables_name-loading').style.display = 'none';
+                if( tables_name !== false && tables_name.find(v => v.TABLE_NAME === e.value)) {
+                    toastr.error(`${e.value} 已存在<br>請輸入其他名稱`);
                     e.value = csvFile.files[0].name.replace('.csv', '');
                 }
             });
@@ -834,6 +836,7 @@
         // 判斷 table name 是否已存在資料庫
         function getTablesName() {
             return new Promise(function(resolve, reject) {
+                document.getElementById('get_tables_name-loading').style.display = 'inline';
                 let headers = {
                     "Content-Type": "application/json",
                     "Accept": "application/json",
