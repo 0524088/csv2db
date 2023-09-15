@@ -39,7 +39,7 @@ class DatabaseManipulate
                 $file_collection_name = Session::get('token');
                 Storage::disk('test_file')->delete("$file_collection_name/$file");
                 $error = $e->getMessage();
-                return ['status' => 'error', 'message' => "$table is already exist!"];
+                return ['status' => 'error', 'message' => $error];
             }
         } catch(Exception $e) {
             $error = $e->getMessage();
