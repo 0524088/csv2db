@@ -58,10 +58,22 @@ class DatabaseManipulate
     // 插入資料
     function insertData($table_info) {
         try {
-            
             $columns = $table_info['columns'];
             $ignore = $table_info['ignore'];
             $ignore_start_lines = $table_info['ignore_start_lines'] + 1; // 首行為欄位名，所以要 +1
+            $set_column_value = $table_info['set_column_value']; // 客製化設值
+            $file_collection_name = Session::get('token');
+            $file = $table_info['name'].'.csv';
+
+            foreach($set_column_value as $value) {
+                DB::statement("DROP TABLE IF EXISTS `test1`");
+                Storage::disk('test_file')->delete("$file_collection_name/$file");
+
+                $pattern = "/\{col\d*\}/";
+                
+                $value = preg_replace($pattern, "/\@col\d*/",$value);
+                dd($value);
+            }
 
             // 插入現有 table
             $insert_to_exist_table = $table_info['insert_to_exist_table'];
@@ -71,8 +83,6 @@ class DatabaseManipulate
                 $table = $table_info['name'];
             }
             
-            $file_collection_name = Session::get('token');
-            $file = $table_info['name'].'.csv';
             $path = Storage::disk('test_file')->path("$file_collection_name/$file");
 
             $path = str_replace('\\', '\\\\', $path); // php反斜線為保留字，需用\\代替；MySQL\亦為保留字
@@ -102,7 +112,7 @@ class DatabaseManipulate
             //DB::statement("DROP TABLE IF EXISTS `$table`");
             Storage::disk('test_file')->delete("$file_collection_name/$file");
             $error = $e->getMessage();
-            return ['status' => 'error', 'message' => $error];
+            return ['status' => 'error', 'message' => "insertData > $error"];
         }
     }
     

@@ -112,6 +112,7 @@ class AjaxController extends Controller
                     'ignore_end_lines' => $ignore_end_lines,
                     'insert_to_exist_table' => $insert_to_exist_table,
                     'insert_to_exist_table_name' => $request->input('insert_to_exist_table_name'),
+                    'set_column_value' => $request->input('set_column_value'),
                 ];
 
                 // 創建table
@@ -140,7 +141,8 @@ class AjaxController extends Controller
             if( $count > $total ) return response(['status' => 'error', 'message' => '多餘檔案！', 'quantity' => ($count - $total)], 400); // 多分割數量 (其他錯誤，多出檔案)
         } catch(Exception $e) {
             $error = $e->getMessage();
-            return response(['status' => 'error', 'message' => $error], 400);
+            Storage::disk('test_file')->delete("$file_collection_name/$file_name");
+            return response(['status' => 'error', 'message' => " upload_finished > $error"], 400);
         }
     }
 

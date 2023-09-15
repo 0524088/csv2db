@@ -465,7 +465,7 @@
                         </td>
                         <td>
                             <div class="input-group" id="setting_column_sv_${index}">
-                                <input type="text" class="form-control" placeholder="Set Value">
+                                <input type="text" class="form-control setting_column_sv" placeholder="Set Value">
                             </div>
                         </td>
                     </tr>`;
@@ -570,7 +570,13 @@
 
                         // 所有分割檔下載完成call後端處理
                         if( count == (total - 1) ) {
-    
+                            
+
+                            let set_column_value = [];
+                            for(i = 0; i < document.getElementsByClassName('setting_column_sv').length; i++) {
+                                set_column_value.push(document.getElementsByClassName('setting_column_sv')[i].value);
+                            }
+                            console.log(set_column_value);
                             let headers = {
                                 "Content-Type": "application/json",
                                 "Accept": "application/json",
@@ -586,6 +592,7 @@
                                 'ignore_end_lines' : ignore_end_lines, // 忽略後 n 行
                                 'insert_to_exist_table' : insert_to_exist_table, // 是否插入已存在的 table
                                 'insert_to_exist_table_name' : insert_to_exist_table_name, // 插入已存在的 table name
+                                'set_column_value' : set_column_value // 客製化欄位設值
                             };
     
                             fetch(`upload_finished`, {
@@ -819,7 +826,7 @@
                         </td>
                         <td>
                             <div class="input-group" id="setting_column_sv_${index}">
-                                <input type="text" class="form-control" placeholder="Set Value" value="{col1}">
+                                <input type="text" class="form-control setting_column_sv" placeholder="Set Value" value="{col1}">
                             </div>
                         </td>
                     </tr>`;
