@@ -177,21 +177,9 @@
     </div>
 </div>
     <script>
-        class ColumnSettingInfo {
-            index = 0;
-            get index() {
-                return this.index;
-            }
-
-            addindex(val) {
-                typeof val === 'undefined' ? this.index = 0 : this.index += val;
-            }
-        }
-
         var Data = {};
         var Page = 1;
         var File = '';
-        var Column_setting_info = new ColumnSettingInfo();
 
         // ====================================================================================================================================
         // file button
@@ -201,8 +189,6 @@
             progree = document.getElementById('progress_bar');
             progree.innerHTML = `0 %`;
             progree.style.width = `0%`;
-
-            Column_setting_info.addindex(); // 欄位設定重置
 
             document.getElementById('customTableName').readOnly = true; // 禁用 checkbox of table name
             document.getElementById('customTableName').value = ''; // 重置 table name
@@ -377,7 +363,7 @@
                 typeof option.ignore_start_lines === 'undefined' ? ignore_start_lines : ignore_start_lines = option.ignore_start_lines;
                 typeof option.ignore_end_lines === 'undefined' ? ignore_end_lines : ignore_end_lines = option.ignore_end_lines;
             }
-
+            
             // 總頁數
             data.pages =  parseInt(body.length / record_per_page);
             body.length % record_per_page == 0 ? data.pages : data.pages++;
@@ -471,7 +457,6 @@
                     </tr>`;
                 document.getElementById('setting_column_table').insertAdjacentHTML('beforeend', html);
                 document.getElementById(`setting_column_type_${index}`).value = type;
-                Column_setting_info.addindex(1);
             });
 
             html = `
@@ -678,7 +663,7 @@
         // Table Setting Control
         // 確認 Table Setting 是否有變更設定
         function changeTableSetting() {
-            if(File == '') {
+            if(File != '') {
                 Page = 1;
                 renderSetting();
                 renderTable(Page, getSettingParameters());
@@ -799,7 +784,7 @@
                 checkbox.checked = true;
             }
         }
-
+/*
         // 新增 column
         function addNewColumn() {
             let index = Column_setting_info.index;
@@ -839,7 +824,7 @@
             let element = document.getElementById(`tr_setting_delete_column_${index}`);
             element.parentNode.removeChild(element);
         }
-
+*/
         // 判斷 table name 是否已存在資料庫
         function getTablesName() {
             return new Promise(function(resolve, reject) {
