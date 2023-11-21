@@ -1,11 +1,11 @@
 # csv2db
 將 csv 檔透過 web 方式操作即可直接匯入資料庫，可在前端先檢視並且設定欄位名資料型別等，即可在資料庫建立表並匯入
 
-## 環境
+# 環境
 1. 匯入 `建立使用者資料表.sql` 並到 `/register?account={account}&password={password}` 建立使用者<br>
 2. 修改 MySQL 的 `my.ini` 檔，搜尋 `secure-file-priv` 修改 `secure-file-priv="{path}/test_file"`
 
-## 系統 demo
+# 系統 DEMO
 1. 選擇單個 csv 檔
 ![image](https://github.com/0524088/csv2db/assets/144317928/719f5c66-2601-472a-9f1e-5dcc7ea79fb3)
 
